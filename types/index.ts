@@ -11,6 +11,23 @@ export interface User {
     userId: string;
     timestamp: string;
     notes?: string;
+    latitude?: number;
+    longitude?: number;
+    locationName?: string;
+    photoUrl?: string;
+    rating?: number;
+    durationMinutes?: number;
+  }
+  
+  export interface CreatePoopData {
+    userId: string;
+    notes?: string;
+    latitude?: number;
+    longitude?: number;
+    locationName?: string;
+    photoUrl?: string;
+    rating?: number;
+    durationMinutes?: number;
   }
   
   export interface Friend {

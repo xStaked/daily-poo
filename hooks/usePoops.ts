@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { PoopLog, Stats } from '../types';
+import { CreatePoopData, PoopLog, Stats } from '../types';
 
 export function usePoops() {
   const { user } = useAuth();
@@ -15,7 +15,20 @@ export function usePoops() {
       const res = await fetch(`http://localhost:3001/api/poops?userId=${user.id}`);
       if (res.ok) {
         const data = await res.json();
-        setLogs(data.logs || []);
+        // Mapear los datos del backend (snake_case) a camelCase
+        const mappedLogs: PoopLog[] = (data.logs || []).map((log: any) => ({
+          id: log.id,
+          userId: log.user_id,
+          timestamp: log.timestamp,
+          notes: log.notes || undefined,
+          latitude: log.latitude ? parseFloat(log.latitude) : undefined,
+          longitude: log.longitude ? parseFloat(log.longitude) : undefined,
+          locationName: log.location_name || undefined,
+          photoUrl: log.photo_url || undefined,
+          rating: log.rating || undefined,
+          durationMinutes: log.duration_minutes || undefined,
+        }));
+        setLogs(mappedLogs);
       }
     } catch (err) {
       console.error('Failed to fetch logs:', err);
@@ -37,13 +50,22 @@ export function usePoops() {
     }
   }, [user]);
 
-  const logPoop = async (notes?: string) => {
+  const logPoop = async (data: CreatePoopData) => {
     if (!user) return false;
     try {
       const res = await fetch('http://localhost:3001/api/poops', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, notes }),
+        body: JSON.stringify({
+          userId: user.id,
+          notes: data.notes,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          locationName: data.locationName,
+          photoUrl: data.photoUrl,
+          rating: data.rating,
+          durationMinutes: data.durationMinutes,
+        }),
       });
 
       if (res.ok) {
@@ -58,6 +80,24 @@ export function usePoops() {
     }
   };
 
+  const deletePoop = async (poopId: string) => {
+    if (!user) return false;
+    try {
+      const res = await fetch(`http://localhost:3001/api/poops/${poopId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        await fetchLogs();
+        await fetchStats();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to delete:', err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchLogs();
@@ -65,5 +105,5 @@ export function usePoops() {
     }
   }, [user, fetchLogs, fetchStats]);
 
-  return { logs, stats, isLoading, logPoop, refresh: fetchLogs };
+  return { logs, stats, isLoading, logPoop, refresh: fetchLogs, deletePoop };
 }
