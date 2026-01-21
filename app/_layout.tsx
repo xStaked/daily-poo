@@ -19,7 +19,6 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === '(tabs)';
     const isLogin = segments[0] === 'login';
     const isRegister = segments[0] === 'register';
     const isAuthScreen = isLogin || isRegister;
@@ -29,7 +28,7 @@ function RootLayoutNav() {
     } else if (user && isAuthScreen) {
       router.replace('/(tabs)');
     }
-  }, [user, segments, isLoading]);
+  }, [user, segments, isLoading, router]);
 
   return null;
 }
