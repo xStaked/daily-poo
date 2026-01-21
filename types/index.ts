@@ -61,3 +61,13 @@ export interface LeaderboardEntry {
   value: number;
   isCurrentUser?: boolean;
 }
+
+export interface FriendRequest {
+  friendshipId: string;
+  createdAt: string;
+  requester: {
+    id: string;
+    username: string;
+    displayName: string;
+  };
+}

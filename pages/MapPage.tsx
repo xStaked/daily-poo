@@ -154,6 +154,8 @@ export default function MapPage() {
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+          <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+          <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
           <style>
             body { margin: 0; padding: 0; }
             #map { width: 100%; height: 100vh; }
@@ -181,6 +183,24 @@ export default function MapPage() {
               font-size: 16px;
               box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             }
+            .custom-cluster {
+              background: transparent !important;
+              border: none !important;
+            }
+            .cluster-marker {
+              background: linear-gradient(135deg, #8B4513 0%, #D4A574 100%);
+              border: 3px solid #FFFFFF;
+              border-radius: 50%;
+              width: 48px;
+              height: 48px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 14px;
+              font-weight: 700;
+              color: #FFFFFF;
+              box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+            }
             .leaflet-popup-content-wrapper {
               border-radius: 12px;
               padding: 0;
@@ -203,6 +223,7 @@ export default function MapPage() {
         <body>
           <div id="map"></div>
           <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+          <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
           <script>
             const markers = ${markersJSON};
             const userId = "${user?.id || ''}";
@@ -213,9 +234,27 @@ export default function MapPage() {
               attribution: '&copy; OpenStreetMap &copy; CartoDB'
             }).addTo(map);
 
+            // Configurar cluster group con spider
+            const markerClusterGroup = L.markerClusterGroup({
+              spiderfyOnMaxZoom: true,
+              showCoverageOnHover: false,
+              zoomToBoundsOnClick: true,
+              maxClusterRadius: 50,
+              spiderfyDistanceMultiplier: 1.5,
+              iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                return L.divIcon({
+                  html: '<div class="cluster-marker">' + count + ' 💩</div>',
+                  className: 'custom-cluster',
+                  iconSize: [48, 48],
+                  iconAnchor: [24, 24]
+                });
+              }
+            });
+
             markers.forEach((m) => {
               const markerClass = m.isOwn ? 'marker-own' : 'marker-friend';
-              const emoji = m.isOwn ? '💩' : '💩';
+              const emoji = '💩';
 
               const customIcon = L.divIcon({
                 className: '',
@@ -229,13 +268,16 @@ export default function MapPage() {
                 (m.location ? '<div class="popup-info">' + m.location + '</div>' : '');
 
               const marker = L.marker([m.lat, m.lng], { icon: customIcon })
-                .addTo(map)
                 .bindPopup(popupContent);
 
               marker.on('click', () => {
                 window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markerClick', id: m.id }));
               });
+
+              markerClusterGroup.addLayer(marker);
             });
+
+            map.addLayer(markerClusterGroup);
           </script>
         </body>
       </html>
@@ -332,8 +374,8 @@ export default function MapPage() {
               {filter === 'me'
                 ? 'Registra poops con ubicación'
                 : filter === 'friends'
-                ? 'Tus amigos no tienen poops con ubicación'
-                : 'No hay poops con ubicación'}
+                  ? 'Tus amigos no tienen poops con ubicación'
+                  : 'No hay poops con ubicación'}
             </Text>
           </View>
         </View>
@@ -480,7 +522,7 @@ const styles = StyleSheet.create({
   },
   header: {
     position: 'absolute',
-    left: 20,
+    left: 80,
     right: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',

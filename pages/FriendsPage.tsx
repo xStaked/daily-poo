@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { Friend, LeaderboardEntry } from '../types';
+import { Friend, FriendRequest, LeaderboardEntry } from '../types';
 
 interface SearchUser {
   id: string;
@@ -26,7 +26,7 @@ export default function FriendsPage() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,9 +40,18 @@ export default function FriendsPage() {
     try {
       const { data } = await apiClient.get('/friends');
       setFriends((data.friends || []).filter((f: Friend) => f.status === 'accepted'));
-      setPendingRequests((data.friends || []).filter((f: Friend) => f.status === 'pending'));
     } catch (err) {
       console.error('Failed to fetch friends:', err);
+    }
+  }, [user]);
+
+  const fetchPendingRequests = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data } = await apiClient.get('/friends/requests/pending');
+      setPendingRequests(data.requests || []);
+    } catch (err) {
+      console.error('Failed to fetch pending requests:', err);
     }
   }, [user]);
 
@@ -59,9 +68,10 @@ export default function FriendsPage() {
   useEffect(() => {
     if (user) {
       fetchFriends();
+      fetchPendingRequests();
       fetchLeaderboard();
     }
-  }, [user, fetchFriends, fetchLeaderboard]);
+  }, [user, fetchFriends, fetchPendingRequests, fetchLeaderboard]);
 
   // Búsqueda con debounce
   useEffect(() => {
@@ -100,6 +110,7 @@ export default function FriendsPage() {
         )
       );
       fetchFriends();
+      fetchPendingRequests();
     } catch (err) {
       console.error('Failed to send request:', err);
     } finally {
@@ -115,6 +126,7 @@ export default function FriendsPage() {
         accept,
       });
       fetchFriends();
+      fetchPendingRequests();
       fetchLeaderboard();
     } catch (err) {
       console.error('Failed to respond:', err);
@@ -226,28 +238,28 @@ export default function FriendsPage() {
             <Text style={styles.sectionTitle}>Solicitudes</Text>
             <View style={styles.list}>
               {pendingRequests.map((request) => (
-                <View key={request.id} style={styles.requestCard}>
+                <View key={request.friendshipId} style={styles.requestCard}>
                   <View style={styles.userRow}>
                     <View style={styles.avatar}>
                       <Text style={styles.avatarText}>
-                        {request.user.displayName.charAt(0).toUpperCase()}
+                        {request.requester.displayName.charAt(0).toUpperCase()}
                       </Text>
                     </View>
                     <View style={styles.userInfo}>
-                      <Text style={styles.displayName}>{request.user.displayName}</Text>
-                      <Text style={styles.username}>@{request.user.username}</Text>
+                      <Text style={styles.displayName}>{request.requester.displayName}</Text>
+                      <Text style={styles.username}>@{request.requester.username}</Text>
                     </View>
                   </View>
                   <View style={styles.requestActions}>
                     <TouchableOpacity
-                      onPress={() => respondToRequest(request.id, true)}
+                      onPress={() => respondToRequest(request.friendshipId, true)}
                       style={styles.acceptBtn}
                       activeOpacity={0.7}
                     >
                       <MaterialIcons name="check" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() => respondToRequest(request.id, false)}
+                      onPress={() => respondToRequest(request.friendshipId, false)}
                       style={styles.rejectBtn}
                       activeOpacity={0.7}
                     >
