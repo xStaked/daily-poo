@@ -16,6 +16,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { usePoops } from '../hooks/usePoops';
 
+interface Achievement {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  unlocked: boolean;
+}
+
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { stats } = usePoops();
@@ -23,48 +31,69 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
-  const achievements = [
+  const achievements: Achievement[] = [
     {
       id: 'first',
-      name: 'Primera vez',
+      name: 'Bautizo',
       emoji: '🎉',
-      description: 'Registra tu primer poop',
+      description: 'Registra tu primera cagada',
       unlocked: (stats?.allTime || 0) >= 1,
     },
     {
       id: 'streak3',
-      name: 'Racha de 3',
-      emoji: '🔥',
+      name: 'Volcán Activo',
+      emoji: '🌋',
       description: 'Mantén una racha de 3 días',
       unlocked: (stats?.longestStreak || 0) >= 3,
     },
     {
       id: 'streak7',
-      name: 'Guerrero',
-      emoji: '⚔️',
+      name: 'Máquina de Mierda',
+      emoji: '⚙️',
       description: 'Mantén una racha de 7 días',
       unlocked: (stats?.longestStreak || 0) >= 7,
     },
     {
       id: 'streak30',
-      name: 'Maestro',
+      name: 'Rey del Trono',
       emoji: '👑',
       description: 'Mantén una racha de 30 días',
       unlocked: (stats?.longestStreak || 0) >= 30,
     },
     {
+      id: 'total10',
+      name: 'Principiante',
+      emoji: '🐣',
+      description: 'Registra 10 en total',
+      unlocked: (stats?.allTime || 0) >= 10,
+    },
+    {
       id: 'total50',
-      name: 'Club 50',
-      emoji: '🎯',
+      name: 'Veterano del WC',
+      emoji: '🎖️',
       description: 'Registra 50 en total',
       unlocked: (stats?.allTime || 0) >= 50,
     },
     {
       id: 'total100',
-      name: 'Centenario',
-      emoji: '💯',
+      name: 'Culo de Oro',
+      emoji: '🏆',
       description: 'Registra 100 en total',
       unlocked: (stats?.allTime || 0) >= 100,
+    },
+    {
+      id: 'total500',
+      name: 'Leyenda Fecal',
+      emoji: '🐐',
+      description: 'Registra 500 en total',
+      unlocked: (stats?.allTime || 0) >= 500,
+    },
+    {
+      id: 'streak14',
+      name: 'Intestino de Acero',
+      emoji: '💪',
+      description: 'Mantén una racha de 14 días',
+      unlocked: (stats?.longestStreak || 0) >= 14,
     },
   ];
 
@@ -143,7 +172,7 @@ export default function ProfilePage() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statEmoji}>🏆</Text>
+            <Text style={styles.statEmoji}>🔥</Text>
             <Text style={styles.statNumber}>{stats?.longestStreak || 0}</Text>
             <Text style={styles.statLabel}>racha</Text>
           </View>
@@ -183,7 +212,7 @@ export default function ProfilePage() {
                     styles.achievementName,
                     !achievement.unlocked && styles.achievementNameLocked,
                   ]}
-                  numberOfLines={1}
+                  numberOfLines={2}
                 >
                   {achievement.name}
                 </Text>
@@ -471,7 +500,7 @@ const styles = StyleSheet.create({
   },
   achievementCard: {
     width: '31%',
-    aspectRatio: 1,
+    aspectRatio: 0.9,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -491,10 +520,11 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   achievementName: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: '#8B4513',
     textAlign: 'center',
+    lineHeight: 13,
   },
   achievementNameLocked: {
     color: '#BDBDBD',
@@ -581,6 +611,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#BDBDBD',
   },
+  // Delete Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

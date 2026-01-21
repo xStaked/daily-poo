@@ -1,11 +1,13 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { format, isToday } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  Easing,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -22,6 +24,301 @@ import { useAuth } from '../context/AuthContext';
 import { usePoops } from '../hooks/usePoops';
 import { CreatePoopData } from '../types';
 
+interface Achievement {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  unlocked: boolean;
+}
+
+// Celebration modal for new achievements
+function CelebrationModal({
+  visible,
+  achievement,
+  onClose
+}: {
+  visible: boolean;
+  achievement: Achievement | null;
+  onClose: () => void;
+}) {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const confettiAnims = useRef(
+    Array.from({ length: 12 }, () => ({
+      y: new Animated.Value(0),
+      x: new Animated.Value(0),
+      rotate: new Animated.Value(0),
+      opacity: new Animated.Value(1),
+    }))
+  ).current;
+
+  useEffect(() => {
+    if (visible) {
+      // Main content animation
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 4,
+        tension: 100,
+        useNativeDriver: true,
+      }).start();
+
+      // Confetti animations
+      confettiAnims.forEach((anim, index) => {
+        const delay = index * 50;
+        const randomX = (Math.random() - 0.5) * 200;
+        const randomDuration = 1500 + Math.random() * 1000;
+
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.parallel([
+            Animated.timing(anim.y, {
+              toValue: 300,
+              duration: randomDuration,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim.x, {
+              toValue: randomX,
+              duration: randomDuration,
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim.rotate, {
+              toValue: 360 * (Math.random() > 0.5 ? 1 : -1),
+              duration: randomDuration,
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim.opacity, {
+              toValue: 0,
+              duration: randomDuration,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]).start();
+      });
+    } else {
+      scaleAnim.setValue(0);
+      confettiAnims.forEach(anim => {
+        anim.y.setValue(0);
+        anim.x.setValue(0);
+        anim.rotate.setValue(0);
+        anim.opacity.setValue(1);
+      });
+    }
+  }, [visible]);
+
+  const confettiEmojis = ['🎉', '🎊', '✨', '⭐', '💫', '🌟', '💩', '🔥', '👑', '🏆', '💪', '🚀'];
+
+  if (!achievement) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={celebrationStyles.overlay}>
+        {/* Confetti */}
+        {confettiAnims.map((anim, index) => (
+          <Animated.Text
+            key={index}
+            style={[
+              celebrationStyles.confetti,
+              {
+                left: `${10 + (index * 7) % 80}%`,
+                opacity: anim.opacity,
+                transform: [
+                  { translateY: anim.y },
+                  { translateX: anim.x },
+                  {
+                    rotate: anim.rotate.interpolate({
+                      inputRange: [0, 360],
+                      outputRange: ['0deg', '360deg'],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {confettiEmojis[index % confettiEmojis.length]}
+          </Animated.Text>
+        ))}
+
+        <Animated.View
+          style={[
+            celebrationStyles.content,
+            { transform: [{ scale: scaleAnim }] },
+          ]}
+        >
+          <View style={celebrationStyles.handle} />
+
+          <Text style={celebrationStyles.title}>🎉 LOGRO DESBLOQUEADO 🎉</Text>
+
+          <View style={celebrationStyles.badge}>
+            <Text style={celebrationStyles.emoji}>{achievement.emoji}</Text>
+          </View>
+
+          <Text style={celebrationStyles.name}>{achievement.name}</Text>
+          <Text style={celebrationStyles.desc}>{achievement.description}</Text>
+
+          <TouchableOpacity
+            style={celebrationStyles.button}
+            onPress={onClose}
+            activeOpacity={0.8}
+          >
+            <Text style={celebrationStyles.buttonText}>¡Genial!</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+const celebrationStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  confetti: {
+    position: 'absolute',
+    top: '20%',
+    fontSize: 24,
+  },
+  content: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 32,
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#8B4513',
+    marginBottom: 24,
+    letterSpacing: 1,
+  },
+  badge: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FFF8E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  emoji: {
+    fontSize: 48,
+  },
+  name: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  desc: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 28,
+  },
+  button: {
+    backgroundColor: '#8B4513',
+    paddingVertical: 14,
+    paddingHorizontal: 48,
+    borderRadius: 14,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+});
+
+// Achievement definitions
+const getAchievements = (stats: { allTime?: number; longestStreak?: number } | null): Achievement[] => [
+  {
+    id: 'first',
+    name: 'Bautizo',
+    emoji: '🎉',
+    description: 'Registra tu primera cagada',
+    unlocked: (stats?.allTime || 0) >= 1,
+  },
+  {
+    id: 'streak3',
+    name: 'Volcán Activo',
+    emoji: '🌋',
+    description: 'Mantén una racha de 3 días',
+    unlocked: (stats?.longestStreak || 0) >= 3,
+  },
+  {
+    id: 'streak7',
+    name: 'Máquina de Mierda',
+    emoji: '⚙️',
+    description: 'Mantén una racha de 7 días',
+    unlocked: (stats?.longestStreak || 0) >= 7,
+  },
+  {
+    id: 'streak30',
+    name: 'Rey del Trono',
+    emoji: '👑',
+    description: 'Mantén una racha de 30 días',
+    unlocked: (stats?.longestStreak || 0) >= 30,
+  },
+  {
+    id: 'total10',
+    name: 'Principiante',
+    emoji: '🐣',
+    description: 'Registra 10 en total',
+    unlocked: (stats?.allTime || 0) >= 10,
+  },
+  {
+    id: 'total50',
+    name: 'Veterano del WC',
+    emoji: '🎖️',
+    description: 'Registra 50 en total',
+    unlocked: (stats?.allTime || 0) >= 50,
+  },
+  {
+    id: 'total100',
+    name: 'Culo de Oro',
+    emoji: '🏆',
+    description: 'Registra 100 en total',
+    unlocked: (stats?.allTime || 0) >= 100,
+  },
+  {
+    id: 'total500',
+    name: 'Leyenda Fecal',
+    emoji: '🐐',
+    description: 'Registra 500 en total',
+    unlocked: (stats?.allTime || 0) >= 500,
+  },
+  {
+    id: 'streak14',
+    name: 'Intestino de Acero',
+    emoji: '💪',
+    description: 'Mantén una racha de 14 días',
+    unlocked: (stats?.longestStreak || 0) >= 14,
+  },
+];
+
 export default function HomePage() {
   const { user } = useAuth();
   const { stats, logPoop, logs } = usePoops();
@@ -30,7 +327,11 @@ export default function HomePage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [scaleAnim] = useState(new Animated.Value(1));
-  
+
+  // Achievement celebration state
+  const [celebratingAchievement, setCelebratingAchievement] = useState<Achievement | null>(null);
+  const [pendingAchievements, setPendingAchievements] = useState<Achievement[]>([]);
+
   // Form state
   const [notes, setNotes] = useState('');
   const [rating, setRating] = useState<number | undefined>(undefined);
@@ -80,8 +381,8 @@ export default function HomePage() {
         });
         if (reverseGeocode && reverseGeocode.length > 0) {
           const address = reverseGeocode[0];
-          const name = address.name || 
-                      (address.street ? `${address.street}, ${address.city || address.region || ''}` : 
+          const name = address.name ||
+                      (address.street ? `${address.street}, ${address.city || address.region || ''}` :
                       address.city || address.region || 'Ubicación actual');
           setLocationName(name);
         }
@@ -128,11 +429,49 @@ export default function HomePage() {
     }
   };
 
+  // Check for new achievements after logging
+  const checkNewAchievements = async (newStats: typeof stats) => {
+    const storedUnlocked = await AsyncStorage.getItem('unlocked_achievements');
+    const previousUnlocked: string[] = storedUnlocked ? JSON.parse(storedUnlocked) : [];
+
+    const achievements = getAchievements(newStats);
+    const currentlyUnlocked = achievements
+      .filter(a => a.unlocked)
+      .map(a => a.id);
+
+    // Find newly unlocked
+    const newlyUnlockedIds = currentlyUnlocked.filter(id => !previousUnlocked.includes(id));
+    const newlyUnlocked = achievements.filter(a => newlyUnlockedIds.includes(a.id));
+
+    if (newlyUnlocked.length > 0) {
+      // Save updated unlocked list
+      await AsyncStorage.setItem('unlocked_achievements', JSON.stringify(currentlyUnlocked));
+
+      // Show first achievement, queue the rest
+      setCelebratingAchievement(newlyUnlocked[0]);
+      if (newlyUnlocked.length > 1) {
+        setPendingAchievements(newlyUnlocked.slice(1));
+      }
+    }
+  };
+
+  const handleCelebrationClose = () => {
+    setCelebratingAchievement(null);
+
+    // Show next pending achievement if any
+    if (pendingAchievements.length > 0) {
+      setTimeout(() => {
+        setCelebratingAchievement(pendingAchievements[0]);
+        setPendingAchievements(prev => prev.slice(1));
+      }, 300);
+    }
+  };
+
   const handleLog = async () => {
     if (!user) return;
 
     setIsLogging(true);
-    
+
     const poopData: CreatePoopData = {
       userId: user.id,
       notes: notes.trim() || undefined,
@@ -170,6 +509,13 @@ export default function HomePage() {
       Alert.alert('Error', 'No se pudo registrar el poop. Inténtalo de nuevo.');
     }
   };
+
+  // Check achievements when stats change (after logging)
+  useEffect(() => {
+    if (stats) {
+      checkNewAchievements(stats);
+    }
+  }, [stats]);
 
   const todayLogs = (logs || []).filter((log) => isToday(new Date(log.timestamp)));
 
@@ -324,6 +670,13 @@ export default function HomePage() {
           )}
         </Animated.View>
       </TouchableOpacity>
+
+      {/* Achievement Celebration Modal */}
+      <CelebrationModal
+        visible={celebratingAchievement !== null}
+        achievement={celebratingAchievement}
+        onClose={handleCelebrationClose}
+      />
 
       {/* Modal de formulario */}
       <Modal
@@ -945,4 +1298,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
-
