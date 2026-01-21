@@ -1,8 +1,10 @@
 import apiClient from '@/api/client';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { format } from 'date-fns';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -13,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { Friend, LeaderboardEntry } from '../types';
+import { Friend, FriendRequest, LeaderboardEntry } from '../types';
 
 interface SearchUser {
   id: string;
@@ -22,11 +24,21 @@ interface SearchUser {
   friendshipStatus: 'pending' | 'accepted' | null;
 }
 
+interface FriendLog {
+  id: string;
+  timestamp: string;
+  notes?: string;
+  locationName?: string;
+  photoUrl?: string;
+  rating?: number;
+  durationMinutes?: number;
+}
+
 export default function FriendsPage() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,15 +46,27 @@ export default function FriendsPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState<'friends' | 'leaderboard'>('friends');
   const [sendingRequest, setSendingRequest] = useState<string | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const [friendLogs, setFriendLogs] = useState<FriendLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   const fetchFriends = useCallback(async () => {
     if (!user) return;
     try {
       const { data } = await apiClient.get('/friends');
       setFriends((data.friends || []).filter((f: Friend) => f.status === 'accepted'));
-      setPendingRequests((data.friends || []).filter((f: Friend) => f.status === 'pending'));
     } catch (err) {
       console.error('Failed to fetch friends:', err);
+    }
+  }, [user]);
+
+  const fetchPendingRequests = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data } = await apiClient.get('/friends/requests/pending');
+      setPendingRequests(data.requests || []);
+    } catch (err) {
+      console.error('Failed to fetch pending requests:', err);
     }
   }, [user]);
 
@@ -59,9 +83,10 @@ export default function FriendsPage() {
   useEffect(() => {
     if (user) {
       fetchFriends();
+      fetchPendingRequests();
       fetchLeaderboard();
     }
-  }, [user, fetchFriends, fetchLeaderboard]);
+  }, [user, fetchFriends, fetchPendingRequests, fetchLeaderboard]);
 
   // Búsqueda con debounce
   useEffect(() => {
@@ -100,6 +125,7 @@ export default function FriendsPage() {
         )
       );
       fetchFriends();
+      fetchPendingRequests();
     } catch (err) {
       console.error('Failed to send request:', err);
     } finally {
@@ -115,6 +141,7 @@ export default function FriendsPage() {
         accept,
       });
       fetchFriends();
+      fetchPendingRequests();
       fetchLeaderboard();
     } catch (err) {
       console.error('Failed to respond:', err);
@@ -125,6 +152,41 @@ export default function FriendsPage() {
     setShowAddFriend(false);
     setSearchQuery('');
     setSearchResults([]);
+  };
+
+  const openFriendLogs = async (friend: Friend) => {
+    setSelectedFriend(friend);
+    setIsLoadingLogs(true);
+    setFriendLogs([]);
+
+    try {
+      const { data } = await apiClient.get(`/friends/${friend.user.id}/poops`);
+      // Mapear de snake_case a camelCase
+      const logs = (data.logs || data.poops || []).map((log: any) => ({
+        id: log.id,
+        timestamp: log.timestamp,
+        notes: log.notes,
+        locationName: log.location_name || log.locationName,
+        photoUrl: log.photo_url || log.photoUrl,
+        rating: log.rating,
+        durationMinutes: log.duration_minutes || log.durationMinutes,
+      }));
+      setFriendLogs(logs);
+    } catch (err) {
+      console.error('Failed to fetch friend logs:', err);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  const closeFriendLogs = () => {
+    setSelectedFriend(null);
+    setFriendLogs([]);
+  };
+
+  const getRatingEmoji = (rating: number) => {
+    const emojis = ['😫', '😕', '😐', '😊', '🤩'];
+    return emojis[rating - 1] || '😐';
   };
 
   const getRankEmoji = (rank: number) => {
@@ -226,28 +288,28 @@ export default function FriendsPage() {
             <Text style={styles.sectionTitle}>Solicitudes</Text>
             <View style={styles.list}>
               {pendingRequests.map((request) => (
-                <View key={request.id} style={styles.requestCard}>
+                <View key={request.friendshipId} style={styles.requestCard}>
                   <View style={styles.userRow}>
                     <View style={styles.avatar}>
                       <Text style={styles.avatarText}>
-                        {request.user.displayName.charAt(0).toUpperCase()}
+                        {request.requester.displayName.charAt(0).toUpperCase()}
                       </Text>
                     </View>
                     <View style={styles.userInfo}>
-                      <Text style={styles.displayName}>{request.user.displayName}</Text>
-                      <Text style={styles.username}>@{request.user.username}</Text>
+                      <Text style={styles.displayName}>{request.requester.displayName}</Text>
+                      <Text style={styles.username}>@{request.requester.username}</Text>
                     </View>
                   </View>
                   <View style={styles.requestActions}>
                     <TouchableOpacity
-                      onPress={() => respondToRequest(request.id, true)}
+                      onPress={() => respondToRequest(request.friendshipId, true)}
                       style={styles.acceptBtn}
                       activeOpacity={0.7}
                     >
                       <MaterialIcons name="check" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() => respondToRequest(request.id, false)}
+                      onPress={() => respondToRequest(request.friendshipId, false)}
                       style={styles.rejectBtn}
                       activeOpacity={0.7}
                     >
@@ -279,7 +341,12 @@ export default function FriendsPage() {
             ) : (
               <View style={styles.list}>
                 {friends.map((friend) => (
-                  <View key={friend.id} style={styles.friendCard}>
+                  <TouchableOpacity
+                    key={friend.id}
+                    style={styles.friendCard}
+                    onPress={() => openFriendLogs(friend)}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.userRow}>
                       <View style={styles.avatar}>
                         <Text style={styles.avatarText}>
@@ -298,7 +365,8 @@ export default function FriendsPage() {
                       </View>
                       <Text style={styles.todayCount}>{friend.todayCount || 0} hoy</Text>
                     </View>
-                  </View>
+                    <MaterialIcons name="chevron-right" size={20} color="#CCC" style={styles.chevron} />
+                  </TouchableOpacity>
                 ))}
               </View>
             )}
@@ -447,6 +515,120 @@ export default function FriendsPage() {
                 </View>
               )}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Friend Logs Modal */}
+      <Modal
+        visible={selectedFriend !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={closeFriendLogs}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={closeFriendLogs}
+          />
+          <View style={[styles.friendLogsModal, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.modalHandle} />
+
+            {selectedFriend && (
+              <>
+                {/* Friend Header */}
+                <View style={styles.friendLogsHeader}>
+                  <View style={styles.friendLogsUserRow}>
+                    <View style={styles.friendLogsAvatar}>
+                      <Text style={styles.friendLogsAvatarText}>
+                        {selectedFriend.user.displayName.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={styles.friendLogsName}>{selectedFriend.user.displayName}</Text>
+                      <Text style={styles.friendLogsUsername}>@{selectedFriend.user.username}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={closeFriendLogs} style={styles.closeBtn}>
+                    <MaterialIcons name="close" size={20} color="#999" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Stats Summary */}
+                <View style={styles.friendStatsSummary}>
+                  <View style={styles.friendStatItem}>
+                    <Text style={styles.friendStatNumber}>{selectedFriend.todayCount || 0}</Text>
+                    <Text style={styles.friendStatLabel}>hoy</Text>
+                  </View>
+                  <View style={styles.friendStatDivider} />
+                  <View style={styles.friendStatItem}>
+                    <Text style={styles.friendStatNumber}>{selectedFriend.weekCount || 0}</Text>
+                    <Text style={styles.friendStatLabel}>semana</Text>
+                  </View>
+                  <View style={styles.friendStatDivider} />
+                  <View style={styles.friendStatItem}>
+                    <Text style={styles.friendStatNumber}>{friendLogs.length}</Text>
+                    <Text style={styles.friendStatLabel}>total</Text>
+                  </View>
+                </View>
+
+                {/* Logs List */}
+                <ScrollView style={styles.friendLogsList} showsVerticalScrollIndicator={false}>
+                  {isLoadingLogs ? (
+                    <View style={styles.logsLoadingContainer}>
+                      <ActivityIndicator size="large" color="#8B4513" />
+                      <Text style={styles.logsLoadingText}>Cargando historial...</Text>
+                    </View>
+                  ) : friendLogs.length === 0 ? (
+                    <View style={styles.noLogsContainer}>
+                      <Text style={styles.noLogsEmoji}>🚽</Text>
+                      <Text style={styles.noLogsText}>Sin registros aún</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.logsList}>
+                      {friendLogs.map((log) => (
+                        <View key={log.id} style={styles.logCard}>
+                          <View style={styles.logCardHeader}>
+                            <Text style={styles.logCardTime}>
+                              {format(new Date(log.timestamp), 'dd/MM • HH:mm')}
+                            </Text>
+                            {log.rating && (
+                              <Text style={styles.logCardRating}>{getRatingEmoji(log.rating)}</Text>
+                            )}
+                          </View>
+
+                          {log.notes && (
+                            <Text style={styles.logCardNotes}>"{log.notes}"</Text>
+                          )}
+
+                          <View style={styles.logCardMeta}>
+                            {log.locationName && (
+                              <View style={styles.logCardMetaItem}>
+                                <MaterialIcons name="location-on" size={14} color="#999" />
+                                <Text style={styles.logCardMetaText} numberOfLines={1}>
+                                  {log.locationName}
+                                </Text>
+                              </View>
+                            )}
+                            {log.durationMinutes && (
+                              <View style={styles.logCardMetaItem}>
+                                <MaterialIcons name="timer" size={14} color="#999" />
+                                <Text style={styles.logCardMetaText}>{log.durationMinutes}m</Text>
+                              </View>
+                            )}
+                          </View>
+
+                          {log.photoUrl && (
+                            <Image source={{ uri: log.photoUrl }} style={styles.logCardPhoto} />
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </ScrollView>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -873,5 +1055,154 @@ const styles = StyleSheet.create({
   searchHintText: {
     fontSize: 14,
     color: '#999',
+  },
+  chevron: {
+    marginLeft: 8,
+  },
+  friendLogsModal: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    maxHeight: '90%',
+  },
+  friendLogsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  friendLogsUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  friendLogsAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  friendLogsAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  friendLogsName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  friendLogsUsername: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 2,
+  },
+  friendStatsSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+    marginHorizontal: 20,
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginBottom: 16,
+  },
+  friendStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  friendStatNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  friendStatLabel: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  friendStatDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#E0E0E0',
+  },
+  friendLogsList: {
+    paddingHorizontal: 20,
+    maxHeight: 400,
+  },
+  logsLoadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    gap: 16,
+  },
+  logsLoadingText: {
+    fontSize: 14,
+    color: '#999',
+  },
+  noLogsContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  noLogsEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  noLogsText: {
+    fontSize: 16,
+    color: '#999',
+  },
+  logsList: {
+    gap: 12,
+    paddingBottom: 20,
+  },
+  logCard: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 16,
+    padding: 16,
+  },
+  logCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  logCardTime: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B4513',
+  },
+  logCardRating: {
+    fontSize: 24,
+  },
+  logCardNotes: {
+    fontSize: 15,
+    color: '#1A1A1A',
+    fontStyle: 'italic',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  logCardMeta: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  logCardMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  logCardMetaText: {
+    fontSize: 13,
+    color: '#999',
+    maxWidth: 150,
+  },
+  logCardPhoto: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    marginTop: 12,
   },
 });

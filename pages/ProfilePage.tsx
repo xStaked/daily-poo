@@ -1,12 +1,16 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import apiClient from '@/api/client';
 import { format } from 'date-fns';
-import React from 'react';
+import { es } from 'date-fns/locale';
+import React, { useState } from 'react';
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
@@ -16,53 +20,79 @@ export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { stats } = usePoops();
   const insets = useSafeAreaInsets();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
   const achievements = [
     {
       id: 'first',
-      name: 'First Log',
+      name: 'Primera vez',
       emoji: '🎉',
-      description: 'Log your first poop',
+      description: 'Registra tu primer poop',
       unlocked: (stats?.allTime || 0) >= 1,
     },
     {
       id: 'streak3',
-      name: '3 Day Streak',
+      name: 'Racha de 3',
       emoji: '🔥',
-      description: 'Maintain a 3 day streak',
+      description: 'Mantén una racha de 3 días',
       unlocked: (stats?.longestStreak || 0) >= 3,
     },
     {
       id: 'streak7',
-      name: 'Week Warrior',
+      name: 'Guerrero',
       emoji: '⚔️',
-      description: 'Maintain a 7 day streak',
+      description: 'Mantén una racha de 7 días',
       unlocked: (stats?.longestStreak || 0) >= 7,
     },
     {
       id: 'streak30',
-      name: 'Monthly Master',
+      name: 'Maestro',
       emoji: '👑',
-      description: 'Maintain a 30 day streak',
+      description: 'Mantén una racha de 30 días',
       unlocked: (stats?.longestStreak || 0) >= 30,
     },
     {
       id: 'total50',
-      name: 'Fifty Club',
+      name: 'Club 50',
       emoji: '🎯',
-      description: 'Log 50 total poops',
+      description: 'Registra 50 en total',
       unlocked: (stats?.allTime || 0) >= 50,
     },
     {
       id: 'total100',
-      name: 'Century',
+      name: 'Centenario',
       emoji: '💯',
-      description: 'Log 100 total poops',
+      description: 'Registra 100 en total',
       unlocked: (stats?.allTime || 0) >= 100,
     },
   ];
 
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== user?.username) {
+      return;
+    }
+
+    try {
+      await apiClient.delete('/auth/account');
+      setShowDeleteModal(false);
+      logout();
+    } catch (err) {
+      console.error('Failed to delete account:', err);
+      Alert.alert(
+        'Error',
+        'No se pudo eliminar la cuenta. Intenta de nuevo más tarde.'
+      );
+    }
+  };
+
+  const getInitial = () => {
+    if (user?.displayName) return user.displayName.charAt(0).toUpperCase();
+    if (user?.username) return user.username.charAt(0).toUpperCase();
+    return '?';
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -71,51 +101,58 @@ export default function ProfilePage() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Header */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarEmoji}>💩</Text>
-          </View>
-          <Text style={styles.profileName}>
-            {user?.displayName || 'Anonymous'}
-          </Text>
-          <Text style={styles.profileUsername}>@{user?.username || 'user'}</Text>
-          <Text style={styles.memberSince}>
-            Member since{' '}
-            {user?.createdAt
-              ? format(new Date(user.createdAt), 'MMMM yyyy')
-              : 'Today'}
-          </Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Perfil</Text>
         </View>
 
-        {/* Stats Summary */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <MaterialIcons name="trending-up" size={20} color="#A67C52" />
-            <Text style={styles.statValue}>{stats?.allTime || 0}</Text>
-            <Text style={styles.statLabel}>Total</Text>
+        {/* Profile Hero Card */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroContent}>
+            <View style={styles.avatarLarge}>
+              <Text style={styles.avatarText}>{getInitial()}</Text>
+            </View>
+            <View style={styles.heroInfo}>
+              <Text style={styles.heroName}>
+                {user?.displayName || 'Usuario'}
+              </Text>
+              <Text style={styles.heroUsername}>@{user?.username || 'user'}</Text>
+              <View style={styles.memberBadge}>
+                <Text style={styles.memberText}>
+                  Desde {user?.createdAt
+                    ? format(new Date(user.createdAt), 'MMM yyyy', { locale: es })
+                    : 'hoy'}
+                </Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.statCard}>
-            <MaterialIcons name="calendar-today" size={20} color="#16A34A" />
-            <Text style={styles.statValue}>
-              {stats?.avgPerDay?.toFixed(1) || '0'}
-            </Text>
-            <Text style={styles.statLabel}>Daily Avg</Text>
+        </View>
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statEmoji}>💩</Text>
+            <Text style={styles.statNumber}>{stats?.allTime || 0}</Text>
+            <Text style={styles.statLabel}>total</Text>
           </View>
-          <View style={styles.statCard}>
-            <MaterialIcons name="emoji-events" size={20} color="#EAB308" />
-            <Text style={styles.statValue}>{stats?.longestStreak || 0}</Text>
-            <Text style={styles.statLabel}>Best Streak</Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statEmoji}>📊</Text>
+            <Text style={styles.statNumber}>{stats?.avgPerDay?.toFixed(1) || '0'}</Text>
+            <Text style={styles.statLabel}>diario</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statEmoji}>🏆</Text>
+            <Text style={styles.statNumber}>{stats?.longestStreak || 0}</Text>
+            <Text style={styles.statLabel}>racha</Text>
           </View>
         </View>
 
         {/* Achievements */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <View style={styles.cardTitleContainer}>
-              <MaterialIcons name="emoji-events" size={20} color="#8B4513" />
-              <Text style={styles.cardTitle}>Achievements</Text>
-            </View>
+            <Text style={styles.cardTitle}>Logros</Text>
             <View style={styles.badge}>
               <Text style={styles.badgeText}>
                 {unlockedCount}/{achievements.length}
@@ -129,8 +166,8 @@ export default function ProfilePage() {
                 style={[
                   styles.achievementCard,
                   achievement.unlocked
-                    ? styles.achievementCardUnlocked
-                    : styles.achievementCardLocked,
+                    ? styles.achievementUnlocked
+                    : styles.achievementLocked,
                 ]}
               >
                 <Text
@@ -144,10 +181,9 @@ export default function ProfilePage() {
                 <Text
                   style={[
                     styles.achievementName,
-                    achievement.unlocked
-                      ? styles.achievementNameUnlocked
-                      : styles.achievementNameLocked,
+                    !achievement.unlocked && styles.achievementNameLocked,
                   ]}
+                  numberOfLines={1}
                 >
                   {achievement.name}
                 </Text>
@@ -158,27 +194,35 @@ export default function ProfilePage() {
 
         {/* Settings */}
         <View style={styles.card}>
-          <View style={styles.cardTitleContainer}>
-            <MaterialIcons name="settings" size={20} color="#8B4513" />
-            <Text style={styles.cardTitle}>Settings</Text>
-          </View>
+          <Text style={styles.cardTitle}>Ajustes</Text>
           <View style={styles.settingsList}>
-            <TouchableOpacity
-              style={styles.settingItem}
-              activeOpacity={0.7}
-              disabled
-            >
-              <Text style={styles.settingLabel}>Notifications</Text>
-              <Text style={styles.settingValue}>Coming soon</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.settingItem}
-              activeOpacity={0.7}
-              disabled
-            >
-              <Text style={styles.settingLabel}>Privacy</Text>
-              <Text style={styles.settingValue}>Coming soon</Text>
-            </TouchableOpacity>
+            <View style={styles.settingItem}>
+              <View style={styles.settingLeft}>
+                <Text style={styles.settingEmoji}>🔔</Text>
+                <Text style={styles.settingLabel}>Notificaciones</Text>
+              </View>
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>Pronto</Text>
+              </View>
+            </View>
+            <View style={styles.settingItem}>
+              <View style={styles.settingLeft}>
+                <Text style={styles.settingEmoji}>🔒</Text>
+                <Text style={styles.settingLabel}>Privacidad</Text>
+              </View>
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>Pronto</Text>
+              </View>
+            </View>
+            <View style={styles.settingItem}>
+              <View style={styles.settingLeft}>
+                <Text style={styles.settingEmoji}>🎨</Text>
+                <Text style={styles.settingLabel}>Apariencia</Text>
+              </View>
+              <View style={styles.comingSoonBadge}>
+                <Text style={styles.comingSoonText}>Pronto</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -188,10 +232,93 @@ export default function ProfilePage() {
           style={styles.logoutButton}
           activeOpacity={0.8}
         >
-          <MaterialIcons name="logout" size={20} color="#DC2626" />
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Text style={styles.logoutIcon}>👋</Text>
+          <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
+
+        {/* Delete Account Link */}
+        <TouchableOpacity
+          onPress={() => setShowDeleteModal(true)}
+          style={styles.deleteLink}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.deleteLinkText}>Eliminar cuenta</Text>
+        </TouchableOpacity>
+
+        {/* App Info */}
+        <View style={styles.appInfo}>
+          <Text style={styles.appVersion}>Daily Poo v1.0.0</Text>
+          <Text style={styles.appTagline}>💩 Hecho con amor</Text>
+        </View>
       </ScrollView>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Handle */}
+            <View style={styles.modalHandle} />
+
+            {/* Warning Icon */}
+            <View style={styles.warningIcon}>
+              <Text style={styles.warningEmoji}>⚠️</Text>
+            </View>
+
+            <Text style={styles.modalTitle}>Eliminar cuenta</Text>
+            <Text style={styles.modalSubtitle}>
+              Esta acción no se puede deshacer. Todos tus datos serán eliminados permanentemente.
+            </Text>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.confirmLabel}>
+                Escribe tu usuario para confirmar:
+              </Text>
+              <View style={styles.usernameBox}>
+                <Text style={styles.usernameDisplay}>@{user?.username}</Text>
+              </View>
+              <TextInput
+                value={deleteConfirmation}
+                onChangeText={setDeleteConfirmation}
+                placeholder="Escribe tu usuario"
+                placeholderTextColor="#999"
+                style={styles.confirmInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirmation('');
+                }}
+                style={styles.cancelButton}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDeleteAccount}
+                style={[
+                  styles.deleteButton,
+                  deleteConfirmation !== user?.username && styles.deleteButtonDisabled
+                ]}
+                disabled={deleteConfirmation !== user?.username}
+              >
+                <Text style={[
+                  styles.deleteButtonText,
+                  deleteConfirmation !== user?.username && styles.deleteButtonTextDisabled
+                ]}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -199,104 +326,120 @@ export default function ProfilePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
+    backgroundColor: '#FAFAFA',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 24,
+    paddingTop: 16,
+    paddingHorizontal: 20,
   },
-  profileCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+  header: {
     marginBottom: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F5E6D3',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
-  avatarContainer: {
-    width: 96,
-    height: 96,
-    backgroundColor: '#D4A574',
-    borderRadius: 48,
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  heroCard: {
+    backgroundColor: '#8B4513',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 16,
+  },
+  heroContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  avatarLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  avatarEmoji: {
-    fontSize: 48,
+  avatarText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  profileName: {
+  heroInfo: {
+    flex: 1,
+  },
+  heroName: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#6B4423',
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
-  profileUsername: {
-    fontSize: 14,
-    color: '#A67C52',
+  heroUsername: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.7)',
     marginBottom: 8,
   },
-  memberSince: {
+  memberBadge: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  memberText: {
     fontSize: 12,
-    color: '#D4A574',
-    marginTop: 8,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
   },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
+  statsRow: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F5E6D3',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  statValue: {
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statEmoji: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#6B4423',
-    marginTop: 8,
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   statLabel: {
     fontSize: 12,
-    color: '#A67C52',
+    color: '#999',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 48,
+    backgroundColor: '#F0F0F0',
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#F5E6D3',
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -304,99 +447,252 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
-  cardTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   cardTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#8B4513',
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 16,
   },
   badge: {
-    backgroundColor: '#FFF8F0',
+    backgroundColor: '#FFF8E1',
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: 12,
   },
   badgeText: {
-    fontSize: 12,
-    color: '#A67C52',
+    fontSize: 13,
+    color: '#8B6914',
+    fontWeight: '600',
   },
   achievementsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
   },
   achievementCard: {
-    flex: 1,
-    minWidth: '30%',
-    padding: 12,
-    borderRadius: 12,
+    width: '31%',
+    aspectRatio: 1,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
   },
-  achievementCardUnlocked: {
-    backgroundColor: '#FFF7ED',
-    borderWidth: 1,
-    borderColor: '#FED7AA',
+  achievementUnlocked: {
+    backgroundColor: '#FFF8E1',
   },
-  achievementCardLocked: {
-    backgroundColor: '#F3F4F6',
-    opacity: 0.5,
+  achievementLocked: {
+    backgroundColor: '#F5F5F5',
   },
   achievementEmoji: {
-    fontSize: 32,
-    marginBottom: 4,
+    fontSize: 28,
+    marginBottom: 6,
   },
   achievementEmojiLocked: {
-    opacity: 0.5,
+    opacity: 0.3,
   },
   achievementName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-  },
-  achievementNameUnlocked: {
     color: '#8B4513',
+    textAlign: 'center',
   },
   achievementNameLocked: {
-    color: '#9CA3AF',
+    color: '#BDBDBD',
   },
   settingsList: {
-    gap: 12,
+    gap: 8,
+    marginTop: -8,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFF8F0',
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  settingEmoji: {
+    fontSize: 20,
   },
   settingLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
-    color: '#8B4513',
+    color: '#1A1A1A',
   },
-  settingValue: {
-    fontSize: 14,
-    color: '#A67C52',
+  comingSoonBadge: {
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  comingSoonText: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '500',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
     paddingVertical: 16,
-    backgroundColor: '#FEE2E2',
-    borderRadius: 12,
-    marginBottom: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  logoutIcon: {
+    fontSize: 18,
   },
   logoutText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  deleteLink: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  deleteLinkText: {
+    fontSize: 14,
     color: '#DC2626',
+    fontWeight: '500',
+  },
+  appInfo: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 4,
+  },
+  appVersion: {
+    fontSize: 12,
+    color: '#BDBDBD',
+    fontWeight: '500',
+  },
+  appTagline: {
+    fontSize: 12,
+    color: '#BDBDBD',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 24,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
+    marginBottom: 20,
+  },
+  warningIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  warningEmoji: {
+    fontSize: 32,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  modalBody: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  confirmLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+    marginBottom: 12,
+  },
+  usernameBox: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  usernameDisplay: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8B4513',
+    textAlign: 'center',
+  },
+  confirmInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#1A1A1A',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    textAlign: 'center',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666',
+  },
+  deleteButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+  },
+  deleteButtonDisabled: {
+    backgroundColor: '#FEE2E2',
+  },
+  deleteButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  deleteButtonTextDisabled: {
+    color: '#F8A0A0',
   },
 });
-
