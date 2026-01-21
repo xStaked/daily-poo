@@ -40,7 +40,7 @@ export default function RegisterScreen() {
         }),
       ])
     ).start();
-  }, []);
+  }, [floatAnim]);
 
   const handleSubmit = async () => {
     if (!username.trim() || !password.trim()) {

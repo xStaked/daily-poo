@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -63,7 +63,7 @@ export default function LoginScreen() {
     );
     bounce.start();
     return () => bounce.stop();
-  }, []);
+  }, [bounceAnim]);
 
   // Flush Handle Pan Responder
   const panResponder = useRef(
@@ -246,7 +246,7 @@ export default function LoginScreen() {
 
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Who's there?</Text>
+              <Text style={styles.label}>Who&apos;s there?</Text>
               <TextInput
                 value={username}
                 onChangeText={setUsername}
