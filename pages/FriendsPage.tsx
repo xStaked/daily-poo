@@ -50,43 +50,44 @@ export default function FriendsPage() {
   const [friendLogs, setFriendLogs] = useState<FriendLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
-  const fetchFriends = useCallback(async () => {
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadAllData = useCallback(async () => {
     if (!user) return;
+
+    setIsLoading(true);
     try {
-      const { data } = await apiClient.get('/friends');
-      setFriends((data.friends || []).filter((f: Friend) => f.status === 'accepted'));
+      const [friendsRes, requestsRes, leaderboardRes] = await Promise.all([
+        apiClient.get('/friends'),
+        apiClient.get('/friends/requests/pending'),
+        apiClient.get('/leaderboard'),
+      ]);
+
+      console.log('Friends response:', friendsRes.data);
+      console.log('Requests response:', requestsRes.data);
+      console.log('Leaderboard response:', leaderboardRes.data);
+
+      setFriends((friendsRes.data.friends || []).filter((f: Friend) => f.status === 'accepted'));
+      setPendingRequests(requestsRes.data.requests || []);
+      setLeaderboard(leaderboardRes.data.leaderboard || []);
     } catch (err) {
-      console.error('Failed to fetch friends:', err);
+      console.error('Failed to fetch data:', err);
+    } finally {
+      setIsLoading(false);
     }
   }, [user]);
 
-  const fetchPendingRequests = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data } = await apiClient.get('/friends/requests/pending');
-      setPendingRequests(data.requests || []);
-    } catch (err) {
-      console.error('Failed to fetch pending requests:', err);
-    }
-  }, [user]);
-
-  const fetchLeaderboard = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data } = await apiClient.get('/leaderboard');
-      setLeaderboard(data.leaderboard || []);
-    } catch (err) {
-      console.error('Failed to fetch leaderboard:', err);
-    }
-  }, [user]);
-
+  // Load data when user is available
   useEffect(() => {
     if (user) {
-      fetchFriends();
-      fetchPendingRequests();
-      fetchLeaderboard();
+      loadAllData();
     }
-  }, [user, fetchFriends, fetchPendingRequests, fetchLeaderboard]);
+  }, [user, loadAllData]);
+
+  // Individual fetch functions for refreshing after actions
+  const refreshData = useCallback(() => {
+    loadAllData();
+  }, [loadAllData]);
 
   // Búsqueda con debounce
   useEffect(() => {
@@ -124,8 +125,7 @@ export default function FriendsPage() {
           u.id === targetUser.id ? { ...u, friendshipStatus: 'pending' } : u
         )
       );
-      fetchFriends();
-      fetchPendingRequests();
+      refreshData();
     } catch (err) {
       console.error('Failed to send request:', err);
     } finally {
@@ -140,9 +140,7 @@ export default function FriendsPage() {
         friendshipId: friendId,
         accept,
       });
-      fetchFriends();
-      fetchPendingRequests();
-      fetchLeaderboard();
+      refreshData();
     } catch (err) {
       console.error('Failed to respond:', err);
     }
@@ -282,8 +280,16 @@ export default function FriendsPage() {
           </TouchableOpacity>
         </View>
 
+        {/* Loading State */}
+        {isLoading && (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color="#8B4513" />
+            <Text style={styles.loadingStateText}>Cargando...</Text>
+          </View>
+        )}
+
         {/* Pending Requests */}
-        {pendingRequests.length > 0 && activeTab === 'friends' && (
+        {!isLoading && pendingRequests.length > 0 && activeTab === 'friends' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Solicitudes</Text>
             <View style={styles.list}>
@@ -323,7 +329,7 @@ export default function FriendsPage() {
         )}
 
         {/* Friends List */}
-        {activeTab === 'friends' && (
+        {!isLoading && activeTab === 'friends' && (
           <View style={styles.section}>
             {friends.length === 0 ? (
               <View style={styles.emptyState}>
@@ -374,7 +380,7 @@ export default function FriendsPage() {
         )}
 
         {/* Leaderboard */}
-        {activeTab === 'leaderboard' && (
+        {!isLoading && activeTab === 'leaderboard' && (
           <View style={styles.section}>
             {leaderboard.length === 0 ? (
               <View style={styles.emptyState}>
@@ -865,6 +871,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#999',
     marginTop: 2,
+  },
+  loadingState: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    gap: 16,
+  },
+  loadingStateText: {
+    fontSize: 15,
+    color: '#999',
   },
   emptyState: {
     backgroundColor: '#FFFFFF',
