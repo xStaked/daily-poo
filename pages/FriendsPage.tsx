@@ -1,17 +1,26 @@
+import apiClient from '@/api/client';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { Friend, LeaderboardEntry } from '../types';
+
+interface SearchUser {
+  id: string;
+  username: string;
+  displayName: string;
+  friendshipStatus: 'pending' | 'accepted' | null;
+}
 
 export default function FriendsPage() {
   const { user } = useAuth();
@@ -21,17 +30,17 @@ export default function FriendsPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState<'friends' | 'leaderboard'>('friends');
+  const [sendingRequest, setSendingRequest] = useState<string | null>(null);
 
   const fetchFriends = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch(`api/friends?userId=${user.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setFriends((data.friends || []).filter((f: Friend) => f.status === 'accepted'));
-        setPendingRequests((data.friends || []).filter((f: Friend) => f.status === 'pending'));
-      }
+      const { data } = await apiClient.get('/friends');
+      setFriends((data.friends || []).filter((f: Friend) => f.status === 'accepted'));
+      setPendingRequests((data.friends || []).filter((f: Friend) => f.status === 'pending'));
     } catch (err) {
       console.error('Failed to fetch friends:', err);
     }
@@ -40,11 +49,8 @@ export default function FriendsPage() {
   const fetchLeaderboard = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch(`api/leaderboard?userId=${user.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLeaderboard(data.leaderboard || []);
-      }
+      const { data } = await apiClient.get('/leaderboard');
+      setLeaderboard(data.leaderboard || []);
     } catch (err) {
       console.error('Failed to fetch leaderboard:', err);
     }
@@ -57,46 +63,120 @@ export default function FriendsPage() {
     }
   }, [user, fetchFriends, fetchLeaderboard]);
 
-  const sendFriendRequest = async () => {
-    if (!user || !searchQuery.trim()) return;
-    try {
-      const res = await fetch('api/friends/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, friendUsername: searchQuery }),
-      });
-      if (res.ok) {
-        setSearchQuery('');
-        setShowAddFriend(false);
-        fetchFriends();
+  // Búsqueda con debounce
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const { data } = await apiClient.get(`/friends/search?query=${encodeURIComponent(searchQuery)}`);
+        setSearchResults(data.users || []);
+      } catch (err) {
+        console.error('Failed to search users:', err);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
       }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  const sendFriendRequest = async (targetUser: SearchUser) => {
+    if (!user) return;
+    setSendingRequest(targetUser.id);
+    try {
+      await apiClient.post('/friends/request', {
+        friendUsername: targetUser.username,
+      });
+      // Actualizar el resultado de búsqueda para mostrar el nuevo estado
+      setSearchResults(prev =>
+        prev.map(u =>
+          u.id === targetUser.id ? { ...u, friendshipStatus: 'pending' } : u
+        )
+      );
+      fetchFriends();
     } catch (err) {
       console.error('Failed to send request:', err);
+    } finally {
+      setSendingRequest(null);
     }
   };
 
   const respondToRequest = async (friendId: string, accept: boolean) => {
     if (!user) return;
     try {
-      const res = await fetch('api/friends/respond', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ friendshipId: friendId, accept }),
+      await apiClient.post('/friends/respond', {
+        friendshipId: friendId,
+        accept,
       });
-      if (res.ok) {
-        fetchFriends();
-        fetchLeaderboard();
-      }
+      fetchFriends();
+      fetchLeaderboard();
     } catch (err) {
       console.error('Failed to respond:', err);
     }
+  };
+
+  const closeModal = () => {
+    setShowAddFriend(false);
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
   const getRankEmoji = (rank: number) => {
     if (rank === 1) return '🥇';
     if (rank === 2) return '🥈';
     if (rank === 3) return '🥉';
-    return `#${rank}`;
+    return `${rank}`;
+  };
+
+  const getStatusButton = (searchUser: SearchUser) => {
+    if (searchUser.id === user?.id) {
+      return (
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusBadgeText}>Tú</Text>
+        </View>
+      );
+    }
+
+    if (searchUser.friendshipStatus === 'accepted') {
+      return (
+        <View style={[styles.statusBadge, styles.statusBadgeSuccess]}>
+          <MaterialIcons name="check" size={14} color="#16A34A" />
+          <Text style={[styles.statusBadgeText, styles.statusBadgeTextSuccess]}>Amigos</Text>
+        </View>
+      );
+    }
+
+    if (searchUser.friendshipStatus === 'pending') {
+      return (
+        <View style={[styles.statusBadge, styles.statusBadgePending]}>
+          <MaterialIcons name="schedule" size={14} color="#D97706" />
+          <Text style={[styles.statusBadgeText, styles.statusBadgeTextPending]}>Pendiente</Text>
+        </View>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        style={styles.addUserButton}
+        onPress={() => sendFriendRequest(searchUser)}
+        disabled={sendingRequest === searchUser.id}
+      >
+        {sendingRequest === searchUser.id ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <>
+            <MaterialIcons name="person-add" size={16} color="#FFFFFF" />
+            <Text style={styles.addUserButtonText}>Agregar</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    );
   };
 
   return (
@@ -108,21 +188,13 @@ export default function FriendsPage() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <View style={styles.iconContainer}>
-              <MaterialIcons name="people" size={24} color="#8B4513" />
-            </View>
-            <View>
-              <Text style={styles.title}>Friends</Text>
-              <Text style={styles.subtitle}>Compare & compete</Text>
-            </View>
-          </View>
+          <Text style={styles.title}>Amigos</Text>
           <TouchableOpacity
             onPress={() => setShowAddFriend(true)}
             style={styles.addButton}
             activeOpacity={0.8}
           >
-            <MaterialIcons name="person-add" size={24} color="#FFFFFF" />
+            <MaterialIcons name="person-add" size={22} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
@@ -133,13 +205,8 @@ export default function FriendsPage() {
             style={[styles.tab, activeTab === 'friends' && styles.tabActive]}
             activeOpacity={0.7}
           >
-            <MaterialIcons
-              name="people"
-              size={16}
-              color={activeTab === 'friends' ? '#8B4513' : '#A67C52'}
-            />
             <Text style={[styles.tabText, activeTab === 'friends' && styles.tabTextActive]}>
-              Friends
+              Amigos {friends.length > 0 && `(${friends.length})`}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -147,13 +214,8 @@ export default function FriendsPage() {
             style={[styles.tab, activeTab === 'leaderboard' && styles.tabActive]}
             activeOpacity={0.7}
           >
-            <MaterialIcons
-              name="emoji-events"
-              size={16}
-              color={activeTab === 'leaderboard' ? '#8B4513' : '#A67C52'}
-            />
             <Text style={[styles.tabText, activeTab === 'leaderboard' && styles.tabTextActive]}>
-              Leaderboard
+              Ranking
             </Text>
           </TouchableOpacity>
         </View>
@@ -161,30 +223,32 @@ export default function FriendsPage() {
         {/* Pending Requests */}
         {pendingRequests.length > 0 && activeTab === 'friends' && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Friend Requests</Text>
-            <View style={styles.requestsList}>
+            <Text style={styles.sectionTitle}>Solicitudes</Text>
+            <View style={styles.list}>
               {pendingRequests.map((request) => (
-                <View key={request.id} style={styles.card}>
-                  <View style={styles.cardContent}>
-                    <View style={styles.avatarContainer}>
-                      <Text style={styles.emoji}>💩</Text>
+                <View key={request.id} style={styles.requestCard}>
+                  <View style={styles.userRow}>
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>
+                        {request.user.displayName.charAt(0).toUpperCase()}
+                      </Text>
                     </View>
                     <View style={styles.userInfo}>
-                      <Text style={styles.userName}>{request.user.displayName}</Text>
+                      <Text style={styles.displayName}>{request.user.displayName}</Text>
                       <Text style={styles.username}>@{request.user.username}</Text>
                     </View>
                   </View>
-                  <View style={styles.actions}>
+                  <View style={styles.requestActions}>
                     <TouchableOpacity
                       onPress={() => respondToRequest(request.id, true)}
-                      style={styles.acceptButton}
+                      style={styles.acceptBtn}
                       activeOpacity={0.7}
                     >
-                      <MaterialIcons name="check" size={20} color="#16A34A" />
+                      <MaterialIcons name="check" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => respondToRequest(request.id, false)}
-                      style={styles.rejectButton}
+                      style={styles.rejectBtn}
                       activeOpacity={0.7}
                     >
                       <MaterialIcons name="close" size={20} color="#DC2626" />
@@ -200,30 +264,39 @@ export default function FriendsPage() {
         {activeTab === 'friends' && (
           <View style={styles.section}>
             {friends.length === 0 ? (
-              <View style={styles.emptyCard}>
+              <View style={styles.emptyState}>
                 <Text style={styles.emptyEmoji}>👋</Text>
-                <Text style={styles.emptyTitle}>No friends yet!</Text>
-                <Text style={styles.emptySubtitle}>Add friends to compare stats</Text>
+                <Text style={styles.emptyTitle}>Sin amigos aún</Text>
+                <Text style={styles.emptySubtitle}>Busca usuarios para agregar</Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => setShowAddFriend(true)}
+                >
+                  <MaterialIcons name="person-add" size={18} color="#FFFFFF" />
+                  <Text style={styles.emptyButtonText}>Buscar amigos</Text>
+                </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.friendsList}>
+              <View style={styles.list}>
                 {friends.map((friend) => (
-                  <View key={friend.id} style={styles.card}>
-                    <View style={styles.cardContent}>
-                      <View style={styles.friendAvatar}>
-                        <Text style={styles.emoji}>💩</Text>
+                  <View key={friend.id} style={styles.friendCard}>
+                    <View style={styles.userRow}>
+                      <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>
+                          {friend.user.displayName.charAt(0).toUpperCase()}
+                        </Text>
                       </View>
                       <View style={styles.userInfo}>
-                        <Text style={styles.userName}>{friend.user.displayName}</Text>
+                        <Text style={styles.displayName}>{friend.user.displayName}</Text>
                         <Text style={styles.username}>@{friend.user.username}</Text>
                       </View>
                     </View>
-                    <View style={styles.stats}>
-                      <View style={styles.streakContainer}>
-                        <MaterialIcons name="local-fire-department" size={16} color="#F97316" />
-                        <Text style={styles.streakText}>{friend.streakCount}</Text>
+                    <View style={styles.friendStats}>
+                      <View style={styles.weekBadge}>
+                        <Text style={styles.weekNumber}>{friend.weekCount || 0}</Text>
+                        <Text style={styles.weekLabel}>sem</Text>
                       </View>
-                      <Text style={styles.todayText}>{friend.todayCount} today</Text>
+                      <Text style={styles.todayCount}>{friend.todayCount || 0} hoy</Text>
                     </View>
                   </View>
                 ))}
@@ -236,38 +309,46 @@ export default function FriendsPage() {
         {activeTab === 'leaderboard' && (
           <View style={styles.section}>
             {leaderboard.length === 0 ? (
-              <View style={styles.emptyCard}>
+              <View style={styles.emptyState}>
                 <Text style={styles.emptyEmoji}>🏆</Text>
-                <Text style={styles.emptyTitle}>No leaderboard yet!</Text>
-                <Text style={styles.emptySubtitle}>Add friends to see rankings</Text>
+                <Text style={styles.emptyTitle}>Sin ranking aún</Text>
+                <Text style={styles.emptySubtitle}>Agrega amigos para competir</Text>
               </View>
             ) : (
-              <View style={styles.leaderboardList}>
-                {leaderboard.map((entry) => (
+              <View style={styles.list}>
+                {leaderboard.map((entry, index) => (
                   <View
                     key={entry.user.id}
                     style={[
-                      styles.card,
-                      entry.isCurrentUser && styles.currentUserCard,
+                      styles.leaderboardCard,
+                      entry.isCurrentUser && styles.leaderboardCardYou,
+                      index < 3 && styles.leaderboardCardTop,
                     ]}
                   >
-                    <View style={styles.cardContent}>
-                      <Text style={styles.rankText}>{getRankEmoji(entry.rank)}</Text>
-                      <View style={styles.friendAvatar}>
-                        <Text style={styles.emoji}>💩</Text>
+                    <View style={styles.rankContainer}>
+                      <Text style={[
+                        styles.rankText,
+                        index < 3 && styles.rankTextTop
+                      ]}>
+                        {getRankEmoji(entry.rank)}
+                      </Text>
+                    </View>
+                    <View style={styles.userRow}>
+                      <View style={[styles.avatar, index === 0 && styles.avatarGold]}>
+                        <Text style={styles.avatarText}>
+                          {entry.user.displayName.charAt(0).toUpperCase()}
+                        </Text>
                       </View>
                       <View style={styles.userInfo}>
-                        <Text style={styles.userName}>
+                        <Text style={styles.displayName}>
                           {entry.user.displayName}
-                          {entry.isCurrentUser && (
-                            <Text style={styles.youLabel}> (You)</Text>
-                          )}
+                          {entry.isCurrentUser && <Text style={styles.youLabel}> (Tú)</Text>}
                         </Text>
                       </View>
                     </View>
-                    <View style={styles.leaderboardStats}>
-                      <Text style={styles.valueText}>{entry.value}</Text>
-                      <Text style={styles.periodText}>this week</Text>
+                    <View style={styles.scoreContainer}>
+                      <Text style={styles.scoreNumber}>{entry.value}</Text>
+                      <Text style={styles.scoreLabel}>esta semana</Text>
                     </View>
                   </View>
                 ))}
@@ -277,54 +358,95 @@ export default function FriendsPage() {
         )}
       </ScrollView>
 
-      {/* Add Friend Modal */}
+      {/* Search Modal */}
       <Modal
         visible={showAddFriend}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowAddFriend(false)}
+        onRequestClose={closeModal}
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
-            onPress={() => setShowAddFriend(false)}
+            onPress={closeModal}
           />
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.modalHandle} />
+
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Friend</Text>
-              <TouchableOpacity
-                onPress={() => setShowAddFriend(false)}
-                style={styles.closeButton}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons name="close" size={20} color="#8B4513" />
+              <Text style={styles.modalTitle}>Buscar amigos</Text>
+              <TouchableOpacity onPress={closeModal} style={styles.closeBtn}>
+                <MaterialIcons name="close" size={20} color="#999" />
               </TouchableOpacity>
             </View>
+
+            {/* Search Input */}
             <View style={styles.searchContainer}>
-              <MaterialIcons
-                name="search"
-                size={20}
-                color="#A67C52"
-                style={styles.searchIcon}
-              />
+              <MaterialIcons name="search" size={20} color="#999" />
               <TextInput
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholder="Enter username..."
-                placeholderTextColor="#D4A574"
+                placeholder="Buscar por username..."
+                placeholderTextColor="#999"
                 style={styles.searchInput}
                 autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus
               />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <MaterialIcons name="close" size={18} color="#999" />
+                </TouchableOpacity>
+              )}
             </View>
-            <TouchableOpacity
-              onPress={sendFriendRequest}
-              disabled={!searchQuery.trim()}
-              style={[styles.sendButton, !searchQuery.trim() && styles.sendButtonDisabled]}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.sendButtonText}>Send Friend Request</Text>
-            </TouchableOpacity>
+
+            {/* Search Results */}
+            <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
+              {isSearching && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color="#8B4513" />
+                  <Text style={styles.loadingText}>Buscando...</Text>
+                </View>
+              )}
+
+              {!isSearching && searchQuery.length > 0 && searchResults.length === 0 && (
+                <View style={styles.noResults}>
+                  <Text style={styles.noResultsEmoji}>🔍</Text>
+                  <Text style={styles.noResultsText}>No se encontraron usuarios</Text>
+                </View>
+              )}
+
+              {!isSearching && searchResults.length > 0 && (
+                <View style={styles.resultsList}>
+                  {searchResults.map((searchUser) => (
+                    <View key={searchUser.id} style={styles.resultCard}>
+                      <View style={styles.userRow}>
+                        <View style={styles.avatar}>
+                          <Text style={styles.avatarText}>
+                            {searchUser.displayName.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View style={styles.userInfo}>
+                          <Text style={styles.displayName}>{searchUser.displayName}</Text>
+                          <Text style={styles.username}>@{searchUser.username}</Text>
+                        </View>
+                      </View>
+                      {getStatusButton(searchUser)}
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {!isSearching && searchQuery.length === 0 && (
+                <View style={styles.searchHint}>
+                  <Text style={styles.searchHintEmoji}>👆</Text>
+                  <Text style={styles.searchHintText}>
+                    Escribe un username para buscar
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -335,14 +457,14 @@ export default function FriendsPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
+    backgroundColor: '#FAFAFA',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 24,
+    paddingTop: 16,
+    paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
@@ -350,160 +472,138 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 24,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#F5E6D3',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#6B4423',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#A67C52',
-    marginTop: 2,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   addButton: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     backgroundColor: '#8B4513',
-    borderRadius: 16,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFF8F0',
-    padding: 4,
+    backgroundColor: '#F0F0F0',
     borderRadius: 12,
+    padding: 4,
     marginBottom: 24,
-    gap: 8,
   },
   tab: {
     flex: 1,
-    flexDirection: 'row',
+    paddingVertical: 12,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 8,
+    borderRadius: 10,
   },
   tabActive: {
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
     elevation: 2,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#A67C52',
+    color: '#999',
   },
   tabTextActive: {
-    color: '#8B4513',
+    color: '#1A1A1A',
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#8B4513',
+    fontWeight: '600',
+    color: '#1A1A1A',
     marginBottom: 12,
   },
-  card: {
+  list: {
+    gap: 12,
+  },
+  requestCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#F5E6D3',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  currentUserCard: {
-    backgroundColor: '#FFF8F0',
-    borderColor: '#D4A574',
+  friendCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardContent: {
+  userRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     flex: 1,
   },
-  avatarContainer: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#F5E6D3',
-    borderRadius: 24,
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#8B4513',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  friendAvatar: {
-    width: 56,
-    height: 56,
-    backgroundColor: '#E8D5C4',
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatarGold: {
+    backgroundColor: '#F59E0B',
   },
-  emoji: {
-    fontSize: 24,
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
   },
   userInfo: {
     flex: 1,
   },
-  userName: {
+  displayName: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#6B4423',
+    fontWeight: '600',
+    color: '#1A1A1A',
   },
   username: {
-    fontSize: 14,
-    color: '#A67C52',
+    fontSize: 13,
+    color: '#999',
     marginTop: 2,
   },
   youLabel: {
-    color: '#A67C52',
+    color: '#999',
     fontWeight: '400',
   },
-  actions: {
+  requestActions: {
     flexDirection: 'row',
     gap: 8,
   },
-  acceptButton: {
+  acceptBtn: {
     width: 40,
     height: 40,
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#16A34A',
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rejectButton: {
+  rejectBtn: {
     width: 40,
     height: 40,
     backgroundColor: '#FEE2E2',
@@ -511,73 +611,118 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stats: {
+  friendStats: {
     alignItems: 'flex-end',
   },
-  streakContainer: {
+  weekBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: '#F0F0F0',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
-  streakText: {
+  weekNumber: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#F97316',
+    color: '#1A1A1A',
   },
-  todayText: {
-    fontSize: 14,
-    color: '#A67C52',
-    marginTop: 4,
-  },
-  rankText: {
-    fontSize: 20,
-    fontWeight: '700',
-    minWidth: 40,
-    color: '#8B4513',
-  },
-  leaderboardStats: {
-    alignItems: 'flex-end',
-  },
-  valueText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#8B4513',
-  },
-  periodText: {
+  weekLabel: {
     fontSize: 12,
-    color: '#A67C52',
-    marginTop: 2,
+    color: '#999',
   },
-  requestsList: {
-    gap: 12,
+  todayCount: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 6,
   },
-  friendsList: {
-    gap: 12,
-  },
-  leaderboardList: {
-    gap: 12,
-  },
-  emptyCard: {
+  leaderboardCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  leaderboardCardYou: {
+    backgroundColor: '#FFF8F0',
+    borderWidth: 1,
+    borderColor: '#E0D5C9',
+  },
+  leaderboardCardTop: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+  },
+  rankContainer: {
+    width: 36,
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  rankText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#999',
+  },
+  rankTextTop: {
+    fontSize: 20,
+  },
+  scoreContainer: {
+    alignItems: 'flex-end',
+  },
+  scoreNumber: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#8B4513',
+  },
+  scoreLabel: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 2,
+  },
+  emptyState: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     padding: 40,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F5E6D3',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   emptyEmoji: {
-    fontSize: 64,
+    fontSize: 48,
     marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#8B4513',
-    marginBottom: 8,
+    fontWeight: '600',
+    color: '#1A1A1A',
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#A67C52',
+    color: '#999',
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#8B4513',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -591,64 +736,142 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 24,
-    maxWidth: 448,
-    width: '100%',
+    paddingTop: 12,
+    maxHeight: '85%',
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
     alignSelf: 'center',
+    marginBottom: 16,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#6B4423',
+    color: '#1A1A1A',
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#F5E6D3',
-    borderRadius: 20,
+  closeBtn: {
+    width: 36,
+    height: 36,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF8F0',
+    backgroundColor: '#F5F5F5',
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    marginBottom: 16,
+    marginHorizontal: 20,
     paddingHorizontal: 16,
-  },
-  searchIcon: {
-    marginRight: 12,
+    gap: 12,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 14,
     fontSize: 16,
-    fontWeight: '500',
-    color: '#6B4423',
+    color: '#1A1A1A',
   },
-  sendButton: {
-    backgroundColor: '#8B4513',
-    borderRadius: 12,
-    paddingVertical: 16,
+  resultsContainer: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    maxHeight: 400,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 32,
   },
-  sendButtonDisabled: {
-    opacity: 0.5,
+  loadingText: {
+    fontSize: 14,
+    color: '#999',
   },
-  sendButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  noResults: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  noResultsEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  noResultsText: {
+    fontSize: 14,
+    color: '#999',
+  },
+  resultsList: {
+    gap: 12,
+    paddingBottom: 20,
+  },
+  resultCard: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E5E5E5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  statusBadgeSuccess: {
+    backgroundColor: '#D1FAE5',
+  },
+  statusBadgePending: {
+    backgroundColor: '#FEF3C7',
+  },
+  statusBadgeText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#666',
+  },
+  statusBadgeTextSuccess: {
+    color: '#16A34A',
+  },
+  statusBadgeTextPending: {
+    color: '#D97706',
+  },
+  addUserButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#8B4513',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  addUserButtonText: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  searchHint: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  searchHintEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  searchHintText: {
+    fontSize: 14,
+    color: '#999',
   },
 });
-
