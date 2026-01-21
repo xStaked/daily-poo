@@ -4,12 +4,12 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -18,6 +18,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -42,8 +43,8 @@ export default function RegisterScreen() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!username.trim()) {
-      setError('Username is required');
+    if (!username.trim() || !password.trim()) {
+      setError('Username and password are required');
       return;
     }
 
@@ -51,7 +52,7 @@ export default function RegisterScreen() {
     setError('');
 
     try {
-      await register(username.trim(), displayName.trim() || undefined);
+      await register(username.trim(), password.trim(), displayName.trim() || undefined);
       router.replace('/(tabs)');
     } catch (err: any) {
       setError(err.message || 'Failed to register. Please try again.');
@@ -93,6 +94,22 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.inputContainer}>
+              <Text style={styles.label}>Password *</Text>
+              <TextInput
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setError('');
+                }}
+                placeholder="Create a password"
+                placeholderTextColor="#D4A574"
+                style={styles.input}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
               <Text style={styles.label}>Display Name (Optional)</Text>
               <TextInput
                 value={displayName}
@@ -112,10 +129,10 @@ export default function RegisterScreen() {
 
             <TouchableOpacity
               onPress={handleSubmit}
-              disabled={!username.trim() || isLoading}
+              disabled={!username.trim() || !password.trim() || isLoading}
               style={[
                 styles.submitButton,
-                (!username.trim() || isLoading) && styles.submitButtonDisabled,
+                (!username.trim() || !password.trim() || isLoading) && styles.submitButtonDisabled,
               ]}
               activeOpacity={0.8}
             >

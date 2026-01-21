@@ -173,171 +173,157 @@ export default function HomePage() {
 
   const todayLogs = (logs || []).filter((log) => isToday(new Date(log.timestamp)));
 
+  const getRatingEmoji = (rating: number) => {
+    const emojis = ['😫', '😕', '😐', '😊', '🤩'];
+    return emojis[rating - 1] || '😐';
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>
-            Hey, {user?.displayName || 'Pooper'}! 👋
-          </Text>
-          <Text style={styles.date}>{format(new Date(), 'EEEE, MMMM d')}</Text>
-        </View>
-
-        {/* Main Log Button */}
-        <View style={styles.logButtonContainer}>
-          <TouchableOpacity
-            onPress={handleOpenModal}
-            disabled={isLogging}
-            style={[
-              styles.logButton,
-              showSuccess && styles.logButtonSuccess,
-              isLogging && styles.logButtonDisabled,
-            ]}
-            activeOpacity={0.8}
-          >
-            <Animated.View
-              style={[
-                styles.logButtonContent,
-                { transform: [{ scale: scaleAnim }] },
-              ]}
-            >
-              {showSuccess ? (
-                <View style={styles.successContent}>
-                  <Text style={styles.successEmoji}>💩</Text>
-                  <Text style={styles.successText}>Nice!</Text>
-                </View>
-              ) : (
-                <View style={styles.logButtonInner}>
-                  <MaterialIcons name="add" size={64} color="#FFFFFF" />
-                  <Text style={styles.logButtonText}>Log Poop</Text>
-                </View>
-              )}
-            </Animated.View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Today's Count */}
-        <View style={styles.card}>
-          <Text style={styles.cardLabel}>Today&apos;s Count</Text>
-          <View style={styles.countContainer}>
-            <Text style={styles.countNumber}>{stats?.today || 0}</Text>
-            <Text style={styles.countEmoji}>💩</Text>
-          </View>
-        </View>
-
-        {/* Quick Stats */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={styles.statHeader}>
-              <MaterialIcons name="local-fire-department" size={20} color="#F97316" />
-              <Text style={styles.statLabel}>Current Streak</Text>
-            </View>
-            <Text style={styles.statValue}>
-              {stats?.currentStreak || 0}
-              <Text style={styles.statUnit}> days</Text>
+          <View>
+            <Text style={styles.greeting}>
+              {format(new Date(), 'EEEE')}
+            </Text>
+            <Text style={styles.title}>
+              {format(new Date(), 'MMMM d')}
             </Text>
           </View>
-
-          <View style={styles.statCard}>
-            <View style={styles.statHeader}>
-              <MaterialIcons name="emoji-events" size={20} color="#EAB308" />
-              <Text style={styles.statLabel}>Best Streak</Text>
-            </View>
-            <Text style={styles.statValue}>
-              {stats?.longestStreak || 0}
-              <Text style={styles.statUnit}> days</Text>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {(user?.displayName || 'P').charAt(0).toUpperCase()}
             </Text>
+          </View>
+        </View>
+
+        {/* Hero Stats Card */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroMain}>
+            <Text style={styles.heroEmoji}>💩</Text>
+            <View style={styles.heroStats}>
+              <Text style={styles.heroNumber}>{stats?.today || 0}</Text>
+              <Text style={styles.heroLabel}>hoy</Text>
+            </View>
+          </View>
+          <View style={styles.heroDivider} />
+          <View style={styles.heroSecondary}>
+            <View style={styles.heroSecondaryItem}>
+              <View style={styles.streakIcon}>
+                <Text style={styles.streakIconText}>🔥</Text>
+              </View>
+              <Text style={styles.heroSecondaryNumber}>{stats?.currentStreak || 0}</Text>
+              <Text style={styles.heroSecondaryLabel}>racha</Text>
+            </View>
+            <View style={styles.heroSecondaryItem}>
+              <View style={styles.trophyIcon}>
+                <Text style={styles.trophyIconText}>🏆</Text>
+              </View>
+              <Text style={styles.heroSecondaryNumber}>{stats?.longestStreak || 0}</Text>
+              <Text style={styles.heroSecondaryLabel}>mejor</Text>
+            </View>
+            <View style={styles.heroSecondaryItem}>
+              <View style={styles.calendarIcon}>
+                <Text style={styles.calendarIconText}>📅</Text>
+              </View>
+              <Text style={styles.heroSecondaryNumber}>{stats?.week || 0}</Text>
+              <Text style={styles.heroSecondaryLabel}>semana</Text>
+            </View>
           </View>
         </View>
 
         {/* Today's Logs */}
         {todayLogs.length > 0 && (
-          <View style={styles.logsContainer}>
-            {todayLogs.map((log, index) => {
-              const logDate = new Date(log.timestamp);
-              const dayNumber = format(logDate, 'd');
-              const time = format(logDate, 'HH:mm');
-              
-              return (
-                <View key={log.id} style={styles.logCard}>
-                  {/* Header con fecha */}
-                  <View style={styles.logCardHeader}>
-                    <View style={styles.dateContainer}>
-                      <MaterialIcons name="calendar-today" size={18} color="#8B4513" />
-                      <Text style={styles.dayNumber}>{dayNumber}</Text>
-                    </View>
-                    <Text style={styles.todayLabel}>Hoy</Text>
-                  </View>
+          <View style={styles.logsSection}>
+            <Text style={styles.sectionTitle}>Historial de hoy</Text>
+            <View style={styles.logsContainer}>
+              {todayLogs.map((log) => {
+                const time = format(new Date(log.timestamp), 'HH:mm');
 
-                  {/* Contenido del log */}
-                  <View style={styles.logCardContent}>
-                    <View style={styles.logMainContent}>
-                      <Text style={styles.logEmoji}>💩</Text>
-                      <View style={styles.logDetails}>
-                        <Text style={styles.logTime}>{time}</Text>
-                        {log.notes && (
-                          <Text style={styles.logNotes}>&quot;{log.notes}&quot;</Text>
-                        )}
-                        {log.locationName && (
-                          <View style={styles.logLocation}>
-                            <MaterialIcons name="location-on" size={14} color="#A67C52" />
-                            <Text style={styles.logLocationText}>{log.locationName}</Text>
-                          </View>
+                return (
+                  <View key={log.id} style={styles.logItem}>
+                    <View style={styles.logTimeContainer}>
+                      <Text style={styles.logTime}>{time}</Text>
+                    </View>
+                    <View style={styles.logContent}>
+                      <View style={styles.logHeader}>
+                        {log.rating && (
+                          <Text style={styles.logRatingEmoji}>{getRatingEmoji(log.rating)}</Text>
                         )}
                         {log.durationMinutes && (
-                          <Text style={styles.logDuration}>
-                            {log.durationMinutes} min
-                          </Text>
+                          <View style={styles.logDurationBadge}>
+                            <MaterialIcons name="timer" size={12} color="#8B4513" />
+                            <Text style={styles.logDurationText}>{log.durationMinutes}m</Text>
+                          </View>
+                        )}
+                        {log.locationName && (
+                          <View style={styles.logLocationBadge}>
+                            <MaterialIcons name="location-on" size={12} color="#8B4513" />
+                          </View>
+                        )}
+                        {log.photoUrl && (
+                          <View style={styles.logPhotoBadge}>
+                            <MaterialIcons name="photo" size={12} color="#8B4513" />
+                          </View>
                         )}
                       </View>
+                      {log.notes && (
+                        <Text style={styles.logNotes} numberOfLines={2}>{log.notes}</Text>
+                      )}
+                      {log.locationName && (
+                        <Text style={styles.logLocationText} numberOfLines={1}>{log.locationName}</Text>
+                      )}
                     </View>
-                    {/* Rating con estrellas */}
-                    {log.rating && (
-                      <View style={styles.logRating}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <MaterialIcons
-                            key={star}
-                            name={star <= log.rating! ? 'star' : 'star-border'}
-                            size={20}
-                            color={star <= log.rating! ? '#EAB308' : '#D1D5DB'}
-                          />
-                        ))}
-                      </View>
+                    {log.photoUrl && (
+                      <Image source={{ uri: log.photoUrl }} style={styles.logThumbnail} />
                     )}
                   </View>
-
-                  {/* Foto si existe */}
-                  {log.photoUrl && (
-                    <View style={styles.logPhotoContainer}>
-                      <Image source={{ uri: log.photoUrl }} style={styles.logPhoto} />
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Encouragement */}
-        {stats?.currentStreak && stats.currentStreak >= 3 && (
-          <View style={styles.encouragementCard}>
-            <View style={styles.encouragementContent}>
-              <Text style={styles.encouragementEmoji}>🔥</Text>
-              <View style={styles.encouragementText}>
-                <Text style={styles.encouragementTitle}>You&apos;re on fire!</Text>
-                <Text style={styles.encouragementSubtitle}>
-                  {stats.currentStreak} day streak! Keep it up! 💪
-                </Text>
-              </View>
+                );
+              })}
             </View>
           </View>
         )}
+
+        {/* Empty State */}
+        {todayLogs.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>🚽</Text>
+            <Text style={styles.emptyTitle}>Sin registros hoy</Text>
+            <Text style={styles.emptySubtitle}>Toca + para registrar</Text>
+          </View>
+        )}
+
+        {/* Streak Encouragement */}
+        {stats?.currentStreak && stats.currentStreak >= 3 && (
+          <View style={styles.streakBanner}>
+            <Text style={styles.streakBannerEmoji}>🔥</Text>
+            <Text style={styles.streakBannerText}>
+              {stats.currentStreak} días seguidos!
+            </Text>
+          </View>
+        )}
       </ScrollView>
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={[styles.fab, showSuccess && styles.fabSuccess]}
+        onPress={handleOpenModal}
+        disabled={isLogging}
+        activeOpacity={0.8}
+      >
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          {showSuccess ? (
+            <Text style={styles.fabSuccessEmoji}>✓</Text>
+          ) : (
+            <MaterialIcons name="add" size={32} color="#FFFFFF" />
+          )}
+        </Animated.View>
+      </TouchableOpacity>
 
       {/* Modal de formulario */}
       <Modal
@@ -352,111 +338,131 @@ export default function HomePage() {
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Registrar Poop 💩</Text>
+              <View style={styles.modalHandle} />
               <TouchableOpacity onPress={handleCloseModal} style={styles.closeButton}>
-                <MaterialIcons name="close" size={24} color="#8B4513" />
+                <MaterialIcons name="close" size={22} color="#999" />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
-              {/* Notas */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Notas (opcional)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Describe tu experiencia..."
-                  placeholderTextColor="#A67C52"
-                  multiline
-                  numberOfLines={3}
-                  value={notes}
-                  onChangeText={setNotes}
-                />
-              </View>
-
-              {/* Rating */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Calificación (opcional)</Text>
-                <View style={styles.ratingContainer}>
-                  {[1, 2, 3, 4, 5].map((star) => (
+              {/* Rating con emojis */}
+              <View style={styles.ratingSection}>
+                <Text style={styles.ratingQuestion}>¿Cómo estuvo?</Text>
+                <View style={styles.emojiRatingContainer}>
+                  {[
+                    { value: 1, emoji: '😫', label: 'Mal' },
+                    { value: 2, emoji: '😕', label: 'Meh' },
+                    { value: 3, emoji: '😐', label: 'Normal' },
+                    { value: 4, emoji: '😊', label: 'Bien' },
+                    { value: 5, emoji: '🤩', label: 'Épico' },
+                  ].map((item) => (
                     <TouchableOpacity
-                      key={star}
-                      onPress={() => setRating(star === rating ? undefined : star)}
-                      style={styles.starButton}
+                      key={item.value}
+                      onPress={() => setRating(item.value === rating ? undefined : item.value)}
+                      style={[
+                        styles.emojiButton,
+                        rating === item.value && styles.emojiButtonSelected,
+                      ]}
                     >
-                      <MaterialIcons
-                        name={star <= (rating || 0) ? 'star' : 'star-border'}
-                        size={32}
-                        color={star <= (rating || 0) ? '#EAB308' : '#D1D5DB'}
-                      />
+                      <Text style={styles.emojiText}>{item.emoji}</Text>
+                      <Text style={[
+                        styles.emojiLabel,
+                        rating === item.value && styles.emojiLabelSelected,
+                      ]}>{item.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
 
-              {/* Duración */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Duración en minutos (opcional)</Text>
+              {/* Duración - Pill selector */}
+              <View style={styles.durationSection}>
+                <View style={styles.durationHeader}>
+                  <MaterialIcons name="timer" size={20} color="#8B4513" />
+                  <Text style={styles.modalSectionTitle}>Duración</Text>
+                </View>
+                <View style={styles.durationPills}>
+                  {['2', '5', '10', '15', '20+'].map((mins) => (
+                    <TouchableOpacity
+                      key={mins}
+                      onPress={() => setDurationMinutes(durationMinutes === mins ? '' : mins)}
+                      style={[
+                        styles.durationPill,
+                        durationMinutes === mins && styles.durationPillSelected,
+                      ]}
+                    >
+                      <Text style={[
+                        styles.durationPillText,
+                        durationMinutes === mins && styles.durationPillTextSelected,
+                      ]}>{mins} min</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Notas */}
+              <View style={styles.notesSection}>
                 <TextInput
-                  style={styles.textInput}
-                  placeholder="Ej: 12"
+                  style={styles.notesInput}
+                  placeholder="Agregar nota..."
                   placeholderTextColor="#A67C52"
-                  keyboardType="number-pad"
-                  value={durationMinutes}
-                  onChangeText={setDurationMinutes}
+                  multiline
+                  numberOfLines={2}
+                  value={notes}
+                  onChangeText={setNotes}
                 />
               </View>
 
-              {/* Ubicación */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Ubicación (opcional)</Text>
+              {/* Quick actions row */}
+              <View style={styles.quickActions}>
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={[
+                    styles.quickActionBtn,
+                    latitude && longitude && styles.quickActionBtnActive,
+                  ]}
                   onPress={handleGetLocation}
                   disabled={isGettingLocation}
                 >
                   <MaterialIcons
                     name="location-on"
-                    size={20}
-                    color="#FFFFFF"
+                    size={22}
+                    color={latitude && longitude ? '#FFFFFF' : '#8B4513'}
                   />
-                  <Text style={styles.actionButtonText}>
-                    {isGettingLocation
-                      ? 'Obteniendo ubicación...'
-                      : latitude && longitude
-                      ? 'Ubicación obtenida ✓'
-                      : 'Obtener ubicación'}
-                  </Text>
+                  {locationName && (
+                    <Text style={[
+                      styles.quickActionText,
+                      latitude && longitude && styles.quickActionTextActive,
+                    ]} numberOfLines={1}>{locationName}</Text>
+                  )}
                 </TouchableOpacity>
-                {locationName && (
-                  <Text style={styles.locationText}>{locationName}</Text>
-                )}
-              </View>
 
-              {/* Foto */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Foto (opcional)</Text>
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={[
+                    styles.quickActionBtn,
+                    photoUrl && styles.quickActionBtnActive,
+                  ]}
                   onPress={handlePickImage}
                   disabled={isPickingImage}
                 >
                   <MaterialIcons
                     name="photo-camera"
-                    size={20}
-                    color="#FFFFFF"
+                    size={22}
+                    color={photoUrl ? '#FFFFFF' : '#8B4513'}
                   />
-                  <Text style={styles.actionButtonText}>
-                    {isPickingImage
-                      ? 'Seleccionando...'
-                      : photoUrl
-                      ? 'Foto seleccionada ✓'
-                      : 'Seleccionar foto'}
-                  </Text>
                 </TouchableOpacity>
-                {photoUrl && (
-                  <Image source={{ uri: photoUrl }} style={styles.previewImage} />
-                )}
               </View>
+
+              {/* Preview de foto */}
+              {photoUrl && (
+                <View style={styles.photoPreviewContainer}>
+                  <Image source={{ uri: photoUrl }} style={styles.previewImage} />
+                  <TouchableOpacity
+                    style={styles.removePhotoBtn}
+                    onPress={() => setPhotoUrl(undefined)}
+                  >
+                    <MaterialIcons name="close" size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Botón de guardar */}
               <TouchableOpacity
@@ -465,7 +471,7 @@ export default function HomePage() {
                 disabled={isLogging}
               >
                 <Text style={styles.saveButtonText}>
-                  {isLogging ? 'Guardando...' : 'Guardar Poop'}
+                  {isLogging ? 'Guardando...' : 'Registrar 💩'}
                 </Text>
               </TouchableOpacity>
             </ScrollView>
@@ -479,277 +485,280 @@ export default function HomePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
+    backgroundColor: '#FAFAFA',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 24,
+    paddingTop: 16,
+    paddingHorizontal: 20,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
+  },
+  greeting: {
+    fontSize: 14,
+    color: '#999',
+    fontWeight: '500',
+    textTransform: 'capitalize',
   },
   title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#6B4423',
-  },
-  date: {
-    fontSize: 14,
-    color: '#A67C52',
-    marginTop: 4,
-  },
-  logButtonContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logButton: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: '#8B4513',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  logButtonSuccess: {
-    backgroundColor: '#8B4513',
-  },
-  logButtonDisabled: {
-    opacity: 0.7,
-  },
-  logButtonContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logButtonInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 18,
-    marginTop: 8,
-  },
-  successContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  successEmoji: {
-    fontSize: 64,
-  },
-  successText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 18,
-    marginTop: 8,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F5E6D3',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  cardLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#A67C52',
-    marginBottom: 8,
-  },
-  countContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  countNumber: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#8B4513',
-  },
-  countEmoji: {
-    fontSize: 36,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 24,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#F5E6D3',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  statLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#8B4513',
-  },
-  statValue: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#6B4423',
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginTop: 2,
   },
-  statUnit: {
+  avatarContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#8B4513',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '400',
+    fontWeight: '700',
+  },
+  heroCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  heroMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  heroEmoji: {
+    fontSize: 56,
+  },
+  heroStats: {
+    alignItems: 'flex-start',
+  },
+  heroNumber: {
+    fontSize: 64,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    lineHeight: 68,
+  },
+  heroLabel: {
+    fontSize: 16,
+    color: '#999',
+    fontWeight: '500',
+    marginTop: -4,
+  },
+  heroDivider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginVertical: 20,
+  },
+  heroSecondary: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  heroSecondaryItem: {
+    alignItems: 'center',
+  },
+  streakIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFF3E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  streakIconText: {
+    fontSize: 18,
+  },
+  trophyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFF8E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  trophyIconText: {
+    fontSize: 18,
+  },
+  calendarIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  calendarIconText: {
+    fontSize: 18,
+  },
+  heroSecondaryNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  heroSecondaryLabel: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  logsSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 16,
   },
   logsContainer: {
-    gap: 16,
-    marginBottom: 24,
+    gap: 12,
   },
-  logCard: {
+  logItem: {
+    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#F5E6D3',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  logCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  dateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  dayNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#8B4513',
-  },
-  todayLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B4423',
-  },
-  logCardContent: {
-    backgroundColor: '#F5E6D3',
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  logMainContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    flex: 1,
-  },
-  logEmoji: {
-    fontSize: 28,
-  },
-  logDetails: {
-    flex: 1,
-    gap: 4,
+  logTimeContainer: {
+    marginRight: 16,
   },
   logTime: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#6B4423',
+    color: '#8B4513',
+  },
+  logContent: {
+    flex: 1,
+  },
+  logHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logRatingEmoji: {
+    fontSize: 20,
+  },
+  logDurationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  logDurationText: {
+    fontSize: 12,
+    color: '#8B4513',
+    fontWeight: '500',
+  },
+  logLocationBadge: {
+    backgroundColor: '#F5F5F5',
+    padding: 6,
+    borderRadius: 8,
+  },
+  logPhotoBadge: {
+    backgroundColor: '#F5F5F5',
+    padding: 6,
+    borderRadius: 8,
   },
   logNotes: {
     fontSize: 14,
-    fontStyle: 'italic',
-    color: '#8B4513',
-    marginTop: 4,
-  },
-  logLocation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
+    color: '#666',
+    marginTop: 6,
   },
   logLocationText: {
     fontSize: 12,
-    color: '#A67C52',
+    color: '#999',
+    marginTop: 4,
   },
-  logDuration: {
-    fontSize: 12,
-    color: '#A67C52',
-    marginTop: 2,
-  },
-  logRating: {
-    flexDirection: 'row',
-    gap: 4,
-    alignItems: 'center',
-  },
-  logPhotoContainer: {
-    marginTop: 12,
+  logThumbnail: {
+    width: 48,
+    height: 48,
     borderRadius: 12,
-    overflow: 'hidden',
+    marginLeft: 12,
   },
-  logPhoto: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 48,
   },
-  encouragementCard: {
-    marginTop: 24,
-    backgroundColor: '#FFF7ED',
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 4,
+  },
+  streakBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF3E0',
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#FED7AA',
+    gap: 8,
   },
-  encouragementContent: {
-    flexDirection: 'row',
+  streakBannerEmoji: {
+    fontSize: 20,
+  },
+  streakBannerText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#E65100',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 100,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#8B4513',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    shadowColor: '#8B4513',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  encouragementEmoji: {
-    fontSize: 32,
+  fabSuccess: {
+    backgroundColor: '#4CAF50',
   },
-  encouragementText: {
-    flex: 1,
-  },
-  encouragementTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#C2410C',
-  },
-  encouragementSubtitle: {
-    fontSize: 14,
-    color: '#EA580C',
-    marginTop: 4,
+  fabSuccessEmoji: {
+    fontSize: 28,
+    color: '#FFFFFF',
   },
   modalContainer: {
     flex: 1,
@@ -764,85 +773,167 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5E6D3',
+    paddingTop: 12,
+    paddingBottom: 8,
+    paddingHorizontal: 20,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#8B4513',
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 2,
   },
   closeButton: {
-    padding: 4,
+    position: 'absolute',
+    right: 16,
+    top: 8,
+    padding: 8,
   },
   modalScrollView: {
     paddingHorizontal: 20,
+    paddingTop: 8,
   },
-  formGroup: {
+  ratingSection: {
+    alignItems: 'center',
     marginBottom: 24,
   },
-  label: {
-    fontSize: 14,
+  ratingQuestion: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B4423',
+    marginBottom: 16,
+  },
+  emojiRatingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  emojiButton: {
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 12,
+    minWidth: 56,
+  },
+  emojiButtonSelected: {
+    backgroundColor: '#FFF7ED',
+  },
+  emojiText: {
+    fontSize: 28,
+  },
+  emojiLabel: {
+    fontSize: 11,
+    color: '#A67C52',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  emojiLabelSelected: {
+    color: '#8B4513',
+    fontWeight: '600',
+  },
+  durationSection: {
+    marginBottom: 20,
+  },
+  durationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  modalSectionTitle: {
+    fontSize: 15,
     fontWeight: '600',
     color: '#8B4513',
-    marginBottom: 8,
   },
-  textInput: {
+  durationPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  durationPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
     borderWidth: 1,
-    borderColor: '#F5E6D3',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
+    borderColor: '#E5E5E5',
+  },
+  durationPillSelected: {
+    backgroundColor: '#8B4513',
+    borderColor: '#8B4513',
+  },
+  durationPillText: {
+    fontSize: 14,
+    fontWeight: '500',
     color: '#6B4423',
-    backgroundColor: '#FFFFFF',
-    minHeight: 80,
+  },
+  durationPillTextSelected: {
+    color: '#FFFFFF',
+  },
+  notesSection: {
+    marginBottom: 20,
+  },
+  notesInput: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 15,
+    color: '#6B4423',
+    minHeight: 60,
     textAlignVertical: 'top',
   },
-  ratingContainer: {
+  quickActions: {
     flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  quickActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    flex: 0,
   },
-  starButton: {
-    padding: 4,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  quickActionBtnActive: {
     backgroundColor: '#8B4513',
-    borderRadius: 12,
-    padding: 14,
-    gap: 8,
+    borderColor: '#8B4513',
   },
-  actionButtonText: {
+  quickActionText: {
+    fontSize: 13,
+    color: '#6B4423',
+    maxWidth: 120,
+  },
+  quickActionTextActive: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
-  locationText: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#A67C52',
-    fontStyle: 'italic',
+  photoPreviewContainer: {
+    position: 'relative',
+    marginBottom: 20,
   },
   previewImage: {
     width: '100%',
-    height: 200,
-    borderRadius: 12,
-    marginTop: 12,
+    height: 180,
+    borderRadius: 16,
     resizeMode: 'cover',
+  },
+  removePhotoBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 16,
+    padding: 6,
   },
   saveButton: {
     backgroundColor: '#8B4513',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 24,
+    padding: 18,
     alignItems: 'center',
-    marginTop: 8,
     marginBottom: 20,
   },
   saveButtonDisabled: {
@@ -850,7 +941,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
   },
 });

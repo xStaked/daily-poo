@@ -1,3 +1,4 @@
+import apiClient from '@/api/client';
 import { User } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
@@ -5,8 +6,8 @@ import React, { createContext, ReactNode, useContext, useEffect, useState } from
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (username: string) => Promise<void>;
-  register: (username: string, displayName?: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string, displayName?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -32,41 +33,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadUser();
   }, []);
 
-  const login = async (username: string) => {
+  const login = async (username: string, password: string) => {
     try {
-      const res = await fetch('http://localhost:3001/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
+      const { data } = await apiClient.post('/auth/login', {
+        username,
+        password,
       });
-      console.log(res);
-      if (!res.ok) throw new Error('Login failed');
 
-      const data = await res.json();
-      setUser(data.user);
-      await AsyncStorage.setItem('pooty_user', JSON.stringify(data.user));
+      // Map backend user to frontend User interface
+      const user: User = {
+        ...data.user,
+        displayName: data.user.display_name
+      };
+
+      setUser(user);
+      await AsyncStorage.setItem('pooty_user', JSON.stringify(user));
+      await AsyncStorage.setItem('pooty_token', data.token);
     } catch (err) {
       console.error('Login error:', err);
       throw err;
     }
   };
 
-  const register = async (username: string, displayName?: string) => {
+  const register = async (username: string, password: string, displayName?: string) => {
     try {
-      const res = await fetch('http://localhost:3001/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, displayName }),
+      const { data } = await apiClient.post('/auth/register', {
+        username,
+        password,
+        displayName,
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Registration failed');
-      }
+      // Map backend user to frontend User interface
+      const user: User = {
+        ...data.user,
+        displayName: data.user.display_name
+      };
 
-      const data = await res.json();
-      setUser(data.user);
-      await AsyncStorage.setItem('pooty_user', JSON.stringify(data.user));
+      setUser(user);
+      await AsyncStorage.setItem('pooty_user', JSON.stringify(user));
+      await AsyncStorage.setItem('pooty_token', data.token);
     } catch (err) {
       console.error('Registration error:', err);
       throw err;
@@ -76,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setUser(null);
     await AsyncStorage.removeItem('pooty_user');
+    await AsyncStorage.removeItem('pooty_token');
   };
 
   return (
