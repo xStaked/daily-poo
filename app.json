@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "daily-poo",
-    "slug": "daily-poo",
+    "name": "MierdaApp",
+    "slug": "mierda-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "dailypoo",
+    "icon": "./assets/images/icon_poop.png",
+    "scheme": "mierda-app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -14,7 +14,7 @@
         "NSLocationWhenInUseUsageDescription": "Esta app necesita acceder a tu ubicación para registrar la ubicación de tus poops.",
         "NSPhotoLibraryUsageDescription": "Esta app necesita acceder a tus fotos para agregar imágenes a tus poops."
       },
-      "bundleIdentifier": "com.xstaked.dailypoo"
+      "bundleIdentifier": "com.xstaked.mierda-app"
     },
     "android": {
       "adaptiveIcon": {
@@ -32,7 +32,7 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.xstaked.dailypoo"
+      "package": "com.xstaked.mierda.app"
     },
     "web": {
       "output": "static",
@@ -68,6 +68,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b23b21c3-34e8-422a-a0e6-34870937eea8"
+      }
     }
   }
 }
