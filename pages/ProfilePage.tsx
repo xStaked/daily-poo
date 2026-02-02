@@ -48,7 +48,7 @@ export default function ProfilePage() {
     },
     {
       id: 'streak7',
-      name: 'Máquina de Mierda',
+      name: 'Máquina de Popó',
       emoji: '⚙️',
       description: 'Mantén una racha de 7 días',
       unlocked: (stats?.longestStreak || 0) >= 7,

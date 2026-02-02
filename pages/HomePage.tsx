@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format, isToday } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -270,7 +270,7 @@ const getAchievements = (stats: { allTime?: number; longestStreak?: number } | n
   },
   {
     id: 'streak7',
-    name: 'Máquina de Mierda',
+    name: 'Máquina de Popó',
     emoji: '⚙️',
     description: 'Mantén una racha de 7 días',
     unlocked: (stats?.longestStreak || 0) >= 7,
@@ -382,8 +382,8 @@ export default function HomePage() {
         if (reverseGeocode && reverseGeocode.length > 0) {
           const address = reverseGeocode[0];
           const name = address.name ||
-                      (address.street ? `${address.street}, ${address.city || address.region || ''}` :
-                      address.city || address.region || 'Ubicación actual');
+            (address.street ? `${address.street}, ${address.city || address.region || ''}` :
+              address.city || address.region || 'Ubicación actual');
           setLocationName(name);
         }
       } catch (err) {
@@ -770,7 +770,7 @@ export default function HomePage() {
                 <TouchableOpacity
                   style={[
                     styles.quickActionBtn,
-                    latitude && longitude && styles.quickActionBtnActive,
+                    (latitude !== undefined && longitude !== undefined) && styles.quickActionBtnActive,
                   ]}
                   onPress={handleGetLocation}
                   disabled={isGettingLocation}
@@ -783,7 +783,7 @@ export default function HomePage() {
                   {locationName && (
                     <Text style={[
                       styles.quickActionText,
-                      latitude && longitude && styles.quickActionTextActive,
+                      (latitude !== undefined && longitude !== undefined) && styles.quickActionTextActive,
                     ]} numberOfLines={1}>{locationName}</Text>
                   )}
                 </TouchableOpacity>

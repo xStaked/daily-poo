@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "MierdaApp",
-    "slug": "mierda-app",
+    "name": "Popómetro",
+    "slug": "popometro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon_poop.png",
-    "scheme": "mierda-app",
+    "scheme": "popometro",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -14,7 +14,7 @@
         "NSLocationWhenInUseUsageDescription": "Esta app necesita acceder a tu ubicación para registrar la ubicación de tus poops.",
         "NSPhotoLibraryUsageDescription": "Esta app necesita acceder a tus fotos para agregar imágenes a tus poops."
       },
-      "bundleIdentifier": "com.xstaked.mierda-app"
+      "bundleIdentifier": "com.xstaked.popometro"
     },
     "android": {
       "adaptiveIcon": {
@@ -32,7 +32,7 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.xstaked.mierda.app"
+      "package": "com.xstaked.popometro"
     },
     "web": {
       "output": "static",
