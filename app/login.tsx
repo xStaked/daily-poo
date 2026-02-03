@@ -96,7 +96,7 @@ export default function LoginScreen() {
     const { username: currentUsername, password: currentPassword } = credentialsRef.current;
 
     if (!currentUsername.trim() || !currentPassword.trim()) {
-      setError('Please fill the tank (enter credentials)!');
+      setError('¡Llena el tanque (ingresa tus datos)!');
       Animated.spring(flushY, {
         toValue: 0,
         useNativeDriver: true,
@@ -125,7 +125,7 @@ export default function LoginScreen() {
       await login(currentUsername.trim(), currentPassword.trim());
       triggerCrumpleAndFlush();
     } catch {
-      setError('Clogged! Invalid credentials.');
+      setError('¡Atascado! Credenciales inválidas.');
       setIsLoading(false);
     }
   };
@@ -240,17 +240,17 @@ export default function LoginScreen() {
       >
         <View style={{ width: '100%', alignItems: 'center', height: '100%' }}>
           <View style={styles.doorHeader}>
-            <Text style={styles.doorSign}>OCCUPIED</Text>
+            <Text style={styles.doorSign}>OCUPADO</Text>
             <View style={styles.lockIcon} />
           </View>
 
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Who&apos;s there?</Text>
+              <Text style={styles.label}>¿Quién anda ahí?</Text>
               <TextInput
                 value={username}
                 onChangeText={setUsername}
-                placeholder="Username"
+                placeholder="Usuario"
                 placeholderTextColor="#A67C52"
                 style={styles.input}
                 autoCapitalize="none"
@@ -258,7 +258,7 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Secret Code</Text>
+              <Text style={styles.label}>Código Secreto</Text>
               <View style={styles.passwordContainer}>
                 {/* Hidden real input */}
                 <TextInput
@@ -270,7 +270,7 @@ export default function LoginScreen() {
                 {/* Visual Poop Mask */}
                 <View style={styles.maskContainer} pointerEvents="none">
                   {password.length === 0 ? (
-                    <Text style={styles.placeholderText}>Password</Text>
+                    <Text style={styles.placeholderText}>Contraseña</Text>
                   ) : (
                     <Text style={styles.poopText}>{getPoopMask()}</Text>
                   )}
@@ -295,7 +295,7 @@ export default function LoginScreen() {
 
             <View style={styles.flushContainer}>
               <Animated.Text style={[styles.flushLabel, { opacity: pullTextOpacity }]}>
-                {isLoading ? 'FLUSHING...' : '↓ PULL TO ENTER ↓'}
+                {isLoading ? 'DESCARGANDO...' : '↓ JALA PARA ENTRAR ↓'}
               </Animated.Text>
 
               <View style={styles.handleTrack}>
@@ -320,7 +320,7 @@ export default function LoginScreen() {
             style={styles.registerLink}
           >
             <Text style={styles.registerText}>
-              Need a pass? Register here
+              ¿Sin cuenta? Regístrate aquí
             </Text>
           </TouchableOpacity>
         </View>

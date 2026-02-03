@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Popómetro",
-    "slug": "popometro",
+    "slug": "daily-poo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon_poop.png",
@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Esta app necesita acceder a tu ubicación para registrar la ubicación de tus poops.",
-        "NSPhotoLibraryUsageDescription": "Esta app necesita acceder a tus fotos para agregar imágenes a tus poops."
+        "NSPhotoLibraryUsageDescription": "Esta app necesita acceder a tus fotos para agregar imágenes a tus poops.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.xstaked.popometro"
     },

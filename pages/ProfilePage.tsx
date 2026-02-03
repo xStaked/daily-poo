@@ -276,7 +276,7 @@ export default function ProfilePage() {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appVersion}>Daily Poo v1.0.0</Text>
+          <Text style={styles.appVersion}>Popómetro v1.0.0</Text>
           <Text style={styles.appTagline}>💩 Hecho con amor</Text>
         </View>
       </ScrollView>

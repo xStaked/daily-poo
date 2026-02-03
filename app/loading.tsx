@@ -10,7 +10,7 @@ export default function LoadingScreen() {
       <View style={styles.content}>
         <Text style={styles.emoji}>💩</Text>
         <ActivityIndicator size="large" color="#8B4513" style={styles.spinner} />
-        <Text style={styles.text}>Loading...</Text>
+        <Text style={styles.text}>Cargando...</Text>
       </View>
     </View>
   );

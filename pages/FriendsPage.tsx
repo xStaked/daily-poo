@@ -461,7 +461,7 @@ export default function FriendsPage() {
               <TextInput
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholder="Buscar por username..."
+                placeholder="Buscar por usuario..."
                 placeholderTextColor="#999"
                 style={styles.searchInput}
                 autoCapitalize="none"
@@ -516,7 +516,7 @@ export default function FriendsPage() {
                 <View style={styles.searchHint}>
                   <Text style={styles.searchHintEmoji}>👆</Text>
                   <Text style={styles.searchHintText}>
-                    Escribe un username para buscar
+                    Escribe un usuario para buscar
                   </Text>
                 </View>
               )}

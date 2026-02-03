@@ -44,7 +44,7 @@ export default function RegisterScreen() {
 
   const handleSubmit = async () => {
     if (!username.trim() || !password.trim()) {
-      setError('Username and password are required');
+      setError('Usuario y contraseña son requeridos');
       return;
     }
 
@@ -55,7 +55,7 @@ export default function RegisterScreen() {
       await register(username.trim(), password.trim(), displayName.trim() || undefined);
       router.replace('/(tabs)');
     } catch (err: any) {
-      setError(err.message || 'Failed to register. Please try again.');
+      setError(err.message || 'Error al registrar. Intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }
@@ -72,20 +72,20 @@ export default function RegisterScreen() {
             <Animated.View style={{ transform: [{ translateY: floatAnim }] }}>
               <Text style={styles.emoji}>💩</Text>
             </Animated.View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join Pooty Tracker!</Text>
+            <Text style={styles.title}>Crear Cuenta</Text>
+            <Text style={styles.subtitle}>¡Únete a Popómetro!</Text>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Username *</Text>
+              <Text style={styles.label}>Usuario *</Text>
               <TextInput
                 value={username}
                 onChangeText={(text) => {
                   setUsername(text);
                   setError('');
                 }}
-                placeholder="Choose a username"
+                placeholder="Elige un usuario"
                 placeholderTextColor="#D4A574"
                 style={styles.input}
                 autoCapitalize="none"
@@ -94,14 +94,14 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password *</Text>
+              <Text style={styles.label}>Contraseña *</Text>
               <TextInput
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
                   setError('');
                 }}
-                placeholder="Create a password"
+                placeholder="Crea una contraseña"
                 placeholderTextColor="#D4A574"
                 style={styles.input}
                 secureTextEntry
@@ -110,11 +110,11 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Display Name (Optional)</Text>
+              <Text style={styles.label}>Nombre (Opcional)</Text>
               <TextInput
                 value={displayName}
                 onChangeText={setDisplayName}
-                placeholder="Your display name"
+                placeholder="Tu nombre"
                 placeholderTextColor="#D4A574"
                 style={styles.input}
                 autoCapitalize="words"
@@ -139,10 +139,10 @@ export default function RegisterScreen() {
               {isLoading ? (
                 <>
                   <ActivityIndicator size="small" color="#FFFFFF" />
-                  <Text style={styles.submitButtonText}>Creating Account...</Text>
+                  <Text style={styles.submitButtonText}>Creando cuenta...</Text>
                 </>
               ) : (
-                <Text style={styles.submitButtonText}>Sign Up 🚀</Text>
+                <Text style={styles.submitButtonText}>Registrarse 🚀</Text>
               )}
             </TouchableOpacity>
 
@@ -152,13 +152,13 @@ export default function RegisterScreen() {
               activeOpacity={0.7}
             >
               <Text style={styles.backButtonText}>
-                Already have an account? Sign in
+                ¿Ya tienes cuenta? Inicia sesión
               </Text>
             </TouchableOpacity>
           </View>
 
           <Text style={styles.footer}>
-            Your data stays private. Share stats only with friends you approve.
+            Tus datos son privados. Solo compartes estadísticas con amigos que apruebes.
           </Text>
         </View>
       </ScrollView>
