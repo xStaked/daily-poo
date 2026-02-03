@@ -13,7 +13,7 @@ const getApiUrl = (): string => {
     return 'http://192.168.1.2:3001/api';
   }
 
-  return 'https://api.pootytracker.com/api';
+  return 'https://api.ganasuperfacil.com/';
 };
 
 export const API_URL = getApiUrl();
