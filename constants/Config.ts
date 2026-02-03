@@ -3,17 +3,14 @@
 // In production: set the environment variable in your build/hosting service
 
 const getApiUrl = (): string => {
-  // First check for environment variable
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  let url = process.env.EXPO_PUBLIC_API_URL || 'https://api.ganasuperfacil.com/api';
+
+  // Ensure it ends with /api (without double slashes)
+  if (!url.endsWith('/api') && !url.endsWith('/api/')) {
+    url = url.endsWith('/') ? `${url}api` : `${url}/api`;
   }
 
-  // Fallback based on environment
-  if (__DEV__) {
-    return 'http://192.168.1.2:3001/api';
-  }
-
-  return 'https://api.ganasuperfacil.com/';
+  return url;
 };
 
 export const API_URL = getApiUrl();

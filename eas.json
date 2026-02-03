@@ -13,7 +13,7 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.ganasuperfacil.com/"
+        "EXPO_PUBLIC_API_URL": "https://api.ganasuperfacil.com/api"
       },
       "autoIncrement": true
     }
