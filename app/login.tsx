@@ -6,6 +6,7 @@ import {
   Dimensions,
   Easing,
   PanResponder,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -24,6 +25,18 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const passwordInputRef = useRef<TextInput>(null);
+
+  // Blinking cursor logic
+  useEffect(() => {
+    if (!isFocused) return;
+    const interval = setInterval(() => {
+      setCursorVisible(v => !v);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [isFocused]);
 
   // Refs to access current state in PanResponder callbacks
   const credentialsRef = useRef({ username: '', password: '' });
@@ -259,23 +272,36 @@ export default function LoginScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Código Secreto</Text>
-              <View style={styles.passwordContainer}>
-                {/* Hidden real input */}
+              <Pressable
+                onPress={() => passwordInputRef.current?.focus()}
+                style={styles.passwordContainer}
+              >
+                {/* Hidden real input - zIndex higher than mask but transparent */}
                 <TextInput
+                  ref={passwordInputRef}
                   value={password}
                   onChangeText={setPassword}
                   style={styles.hiddenInput}
                   autoCapitalize="none"
+                  secureTextEntry
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
                 />
                 {/* Visual Poop Mask */}
                 <View style={styles.maskContainer} pointerEvents="none">
                   {password.length === 0 ? (
-                    <Text style={styles.placeholderText}>Contraseña</Text>
+                    <View style={styles.placeholderRow}>
+                      <Text style={styles.placeholderText}>Contraseña</Text>
+                      {isFocused && cursorVisible && <View style={styles.cursor} />}
+                    </View>
                   ) : (
-                    <Text style={styles.poopText}>{getPoopMask()}</Text>
+                    <View style={styles.poopRow}>
+                      <Text style={styles.poopText}>{getPoopMask()}</Text>
+                      {isFocused && cursorVisible && <View style={[styles.cursor, { marginLeft: 2 }]} />}
+                    </View>
                   )}
                 </View>
-              </View>
+              </Pressable>
             </View>
 
             {error ? (
@@ -418,8 +444,9 @@ const styles = StyleSheet.create({
   },
   hiddenInput: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0, // Hide but keep interactive
-    zIndex: 2,
+    opacity: 0.01, // Almost invisible but remains interactive
+    zIndex: 10,
+    color: 'transparent',
   },
   maskContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -434,6 +461,19 @@ const styles = StyleSheet.create({
   poopText: {
     fontSize: 24, // Bigger font for emojis
     letterSpacing: 2,
+  },
+  placeholderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  poopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cursor: {
+    width: 2,
+    height: 24,
+    backgroundColor: '#8B4513',
   },
   errorContainer: {
     backgroundColor: '#FEE2E2',
