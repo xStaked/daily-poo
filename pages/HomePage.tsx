@@ -692,7 +692,11 @@ export default function HomePage() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHandle} />
-              <TouchableOpacity onPress={handleCloseModal} style={styles.closeButton}>
+              <TouchableOpacity
+                onPress={handleCloseModal}
+                style={styles.closeButton}
+                hitSlop={{ top: 50, bottom: 50, left: 50, right: 50 }}
+              >
                 <MaterialIcons name="close" size={22} color="#999" />
               </TouchableOpacity>
             </View>
@@ -1130,6 +1134,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
     paddingHorizontal: 20,
+    zIndex: 1,
   },
   modalHandle: {
     width: 40,
@@ -1141,7 +1146,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     top: 8,
-    padding: 8,
+    padding: 16,
   },
   modalScrollView: {
     paddingHorizontal: 20,
