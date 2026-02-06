@@ -22,6 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { usePoops } from '../hooks/usePoops';
+import { uploadImageToCloudinary } from '../services/cloudinary';
 import { CreatePoopData } from '../types';
 
 interface Achievement {
@@ -342,6 +343,7 @@ export default function HomePage() {
   const [locationName, setLocationName] = useState<string | undefined>(undefined);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isPickingImage, setIsPickingImage] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const handleOpenModal = () => {
     setShowModal(true);
@@ -401,29 +403,25 @@ export default function HomePage() {
   const handlePickImage = async () => {
     setIsPickingImage(true);
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso denegado', 'Se necesita permiso para acceder a las fotos.');
+        Alert.alert('Permiso denegado', 'Se necesita permiso para acceder a la cámara.');
         setIsPickingImage(false);
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
       });
 
       if (!result.canceled && result.assets[0]) {
-        // En una app real, aquí subirías la imagen a un servicio de almacenamiento
-        // Por ahora, usamos la URI local o una URL de ejemplo
         setPhotoUrl(result.assets[0].uri);
-        Alert.alert('Nota', 'En producción, necesitarás subir la imagen a un servicio de almacenamiento (ej: Cloudinary, AWS S3) y usar la URL resultante.');
       }
     } catch (err) {
-      console.error('Error picking image:', err);
-      Alert.alert('Error', 'No se pudo seleccionar la imagen.');
+      console.error('Error tomando foto:', err);
+      Alert.alert('Error', 'No se pudo tomar la foto.');
     } finally {
       setIsPickingImage(false);
     }
@@ -472,13 +470,40 @@ export default function HomePage() {
 
     setIsLogging(true);
 
+    let finalPhotoUrl = photoUrl;
+
+    // Upload to Cloudinary if it's a local file
+    if (photoUrl && photoUrl.startsWith('file://')) {
+      setIsUploadingImage(true);
+      try {
+        const result = await uploadImageToCloudinary(photoUrl);
+        finalPhotoUrl = result.secure_url;
+      } catch (err) {
+        setIsUploadingImage(false);
+        setIsLogging(false);
+        console.error('Error uploading image:', err);
+        Alert.alert(
+          'Error al subir foto',
+          'No se pudo subir la imagen. ¿Qué deseas hacer?',
+          [
+            { text: 'Reintentar', onPress: () => handleLog() },
+            { text: 'Guardar sin foto', onPress: () => { setPhotoUrl(undefined); handleLog(); } },
+            { text: 'Cancelar', style: 'cancel' },
+          ]
+        );
+        return;
+      } finally {
+        setIsUploadingImage(false);
+      }
+    }
+
     const poopData: CreatePoopData = {
       userId: user.id,
       notes: notes.trim() || undefined,
       latitude,
       longitude,
       locationName,
-      photoUrl,
+      photoUrl: finalPhotoUrl,
       rating,
       durationMinutes: durationMinutes ? parseInt(durationMinutes, 10) : undefined,
     };
@@ -489,7 +514,6 @@ export default function HomePage() {
     if (success) {
       handleCloseModal();
       setShowSuccess(true);
-      // Animación de bounce
       Animated.sequence([
         Animated.spring(scaleAnim, {
           toValue: 1.2,
@@ -823,12 +847,12 @@ export default function HomePage() {
 
               {/* Botón de guardar */}
               <TouchableOpacity
-                style={[styles.saveButton, isLogging && styles.saveButtonDisabled]}
+                style={[styles.saveButton, (isLogging || isUploadingImage) && styles.saveButtonDisabled]}
                 onPress={handleLog}
-                disabled={isLogging}
+                disabled={isLogging || isUploadingImage}
               >
                 <Text style={styles.saveButtonText}>
-                  {isLogging ? 'Guardando...' : 'Registrar 💩'}
+                  {isUploadingImage ? 'Subiendo foto...' : isLogging ? 'Guardando...' : 'Registrar 💩'}
                 </Text>
               </TouchableOpacity>
             </ScrollView>

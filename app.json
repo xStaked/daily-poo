@@ -13,6 +13,7 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Esta app necesita acceder a tu ubicación para registrar la ubicación de tus poops.",
         "NSPhotoLibraryUsageDescription": "Esta app necesita acceder a tus fotos para agregar imágenes a tus poops.",
+        "NSCameraUsageDescription": "Esta app necesita acceder a tu cámara para tomar fotos de tus poops.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.xstaked.popometro"
@@ -31,7 +32,8 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
       ],
       "package": "com.xstaked.popometro"
     },
@@ -62,7 +64,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Esta app necesita acceder a tus fotos para agregar imágenes a tus poops."
+          "photosPermission": "Esta app necesita acceder a tus fotos para agregar imágenes a tus poops.",
+          "cameraPermission": "Esta app necesita acceder a tu cámara para tomar fotos de tus poops."
         }
       ]
     ],
