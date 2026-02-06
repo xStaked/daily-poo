@@ -13,7 +13,10 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.popometro.fun/api"
+        "EXPO_PUBLIC_API_URL": "https://api.popometro.fun/api",
+        "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME": "dttj5j58k",
+        "EXPO_PUBLIC_CLOUDINARY_API_KEY": "262799178534494",
+        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET": "popometro"
       },
       "autoIncrement": true
     }

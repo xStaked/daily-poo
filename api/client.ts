@@ -2,6 +2,9 @@ import { API_URL } from '@/constants/Config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
+axios.defaults.headers.common['X-Timezone'] =
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 const apiClient = axios.create({
     baseURL: API_URL,
     timeout: 10000,
